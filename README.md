@@ -1,27 +1,59 @@
-# Luminware Home Control
+# Luminware
 
-Luminware is a compact frosted home-control dashboard modeled after the supplied reference.
+Luminware is a Roblox UI library built around a compact frosted home-control design.
 
-## Home Control
+It provides a Fluent-style public API while also supporting concept-specific subtabs, left/right panes, and cards.
 
-Execute `HomeControl.lua` directly. It supports Roblox Studio `LocalScript` usage and executor environments with `gethui()`.
+`HomeControl.lua` remains the pixel-focused concept demo. `Library.lua` turns that visual language into a reusable API.
 
-Controls report changes through one optional callback:
+## Features
+
+- Acrylic windows, draggable UI, minimize and unload controls
+- Tabs, subtabs, sections, cards, and two-column layouts
+- Paragraphs, buttons, toggles, sliders, dropdowns, multi dropdowns, inputs, keybinds, and color pickers
+- Dialogs, notifications, themes, global option state, config saving, and interface settings
+- Mouse, touch, and gamepad-friendly `Activated` click handling
+
+## Load
 
 ```lua
-getgenv().HomeControlCallbacks = {
-    OnChanged = function(name, value)
-        print(name, value)
-    end,
-}
-
-loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/Bebo-Mods/Luminware/main/HomeControl.lua"
+local Luminware=loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/Bebo-Mods/Luminware/main/Library.lua"
 ))()
+
+local Window=Luminware:CreateWindow({
+    Title="My Script",
+    Size=UDim2.fromOffset(900,560),
+    Acrylic=true,
+    Theme="FROST",
+})
+
+local Main=Window:AddTab({Name="Main"})
+local Controls=Main:AddSection("Controls")
+
+Controls:AddToggle("Enabled",{Title="Enabled",Default=true})
+Controls:AddSlider("Amount",{Title="Amount",Min=0,Max=100,Default=50})
 ```
 
-Set `BACKGROUND_IMAGE` near the top of `HomeControl.lua` to an uploaded `rbxassetid://...` image when a fixed room backdrop is desired. When left empty, the live game world remains visible behind the frosted panel.
+See [`Example.lua`](Example.lua) for every major feature and both supported layout styles.
 
-## Compatibility
+## Layout APIs
 
-All clickable controls use `GuiButton.Activated`, which works across mouse, touch, and gamepad input.
+Fluent-style:
+
+```lua
+local Tab=Window:AddTab({Name="Features"})
+local Section=Tab:AddSection("Controls")
+Section:AddToggle("Enabled",{Title="Enabled"})
+```
+
+Home-control style:
+
+```lua
+local Tab=Window:AddTab({Name="Home"})
+local Subtab=Tab:AddSubtab("Subtab 1")
+local Card=Subtab.Left:AddCard("Things")
+Card:AddToggle("Thing1",{Title="Thing 1"})
+```
+
+The library stores controls in `Luminware.Options` and toggles in `Luminware.Toggles`.
