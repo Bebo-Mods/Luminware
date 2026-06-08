@@ -34,20 +34,25 @@ local L={
     Unloaded=false,
     Theme="Concept",
     Colors={
-        Accent=Color3.fromRGB(35,184,241),
-        Panel=Color3.fromRGB(45,43,39),
-        Rail=Color3.fromRGB(117,115,108),
-        Card=Color3.fromRGB(111,109,103),
-        Control=Color3.fromRGB(140,139,133),
-        Text=Color3.fromRGB(246,246,244),
-        Muted=Color3.fromRGB(190,189,184),
-        Dark=Color3.fromRGB(25,24,21),
-        White=Color3.fromRGB(250,250,248),
+        Accent=Color3.fromRGB(46,156,214),
+        Panel=Color3.fromRGB(22,24,27),
+        Rail=Color3.fromRGB(38,41,45),
+        Card=Color3.fromRGB(43,46,50),
+        Control=Color3.fromRGB(62,66,71),
+        Text=Color3.fromRGB(213,216,220),
+        Muted=Color3.fromRGB(137,142,148),
+        Dark=Color3.fromRGB(14,16,18),
+        White=Color3.fromRGB(192,197,202),
+        Outline=Color3.fromRGB(104,110,116),
     },
     Themes={
-        Concept={Accent=Color3.fromRGB(35,184,241),Panel=Color3.fromRGB(45,43,39),Card=Color3.fromRGB(111,109,103),Rail=Color3.fromRGB(117,115,108),Control=Color3.fromRGB(140,139,133),Text=Color3.fromRGB(246,246,244),Muted=Color3.fromRGB(190,189,184),Dark=Color3.fromRGB(25,24,21),White=Color3.fromRGB(250,250,248)},
-        Warm={Accent=Color3.fromRGB(235,174,92),Panel=Color3.fromRGB(52,45,38),Card=Color3.fromRGB(119,105,91),Rail=Color3.fromRGB(124,111,98),Control=Color3.fromRGB(148,132,113),Text=Color3.fromRGB(255,248,238),Muted=Color3.fromRGB(205,190,173),Dark=Color3.fromRGB(31,25,20),White=Color3.fromRGB(255,251,244)},
-        Plum={Accent=Color3.fromRGB(178,118,235),Panel=Color3.fromRGB(44,38,49),Card=Color3.fromRGB(101,89,108),Rail=Color3.fromRGB(106,94,112),Control=Color3.fromRGB(133,118,141),Text=Color3.fromRGB(250,246,252),Muted=Color3.fromRGB(198,187,204),Dark=Color3.fromRGB(27,23,30),White=Color3.fromRGB(253,250,255)},
+        Concept={Accent=Color3.fromRGB(46,156,214),Panel=Color3.fromRGB(22,24,27),Card=Color3.fromRGB(43,46,50),Rail=Color3.fromRGB(38,41,45),Control=Color3.fromRGB(62,66,71),Text=Color3.fromRGB(213,216,220),Muted=Color3.fromRGB(137,142,148),Dark=Color3.fromRGB(14,16,18),White=Color3.fromRGB(192,197,202),Outline=Color3.fromRGB(104,110,116)},
+        Carbon={Accent=Color3.fromRGB(95,164,214),Panel=Color3.fromRGB(17,18,20),Card=Color3.fromRGB(31,33,36),Rail=Color3.fromRGB(27,29,32),Control=Color3.fromRGB(48,51,55),Text=Color3.fromRGB(205,208,212),Muted=Color3.fromRGB(123,128,134),Dark=Color3.fromRGB(9,10,12),White=Color3.fromRGB(181,185,190),Outline=Color3.fromRGB(78,83,89)},
+        Graphite={Accent=Color3.fromRGB(126,142,158),Panel=Color3.fromRGB(27,29,31),Card=Color3.fromRGB(48,51,54),Rail=Color3.fromRGB(43,46,49),Control=Color3.fromRGB(67,71,75),Text=Color3.fromRGB(216,218,220),Muted=Color3.fromRGB(143,147,151),Dark=Color3.fromRGB(17,18,20),White=Color3.fromRGB(195,198,201),Outline=Color3.fromRGB(100,105,110)},
+        Midnight={Accent=Color3.fromRGB(77,126,214),Panel=Color3.fromRGB(17,21,29),Card=Color3.fromRGB(31,37,48),Rail=Color3.fromRGB(27,33,43),Control=Color3.fromRGB(46,55,70),Text=Color3.fromRGB(207,214,225),Muted=Color3.fromRGB(124,134,150),Dark=Color3.fromRGB(10,13,19),White=Color3.fromRGB(184,193,207),Outline=Color3.fromRGB(77,88,105)},
+        Obsidian={Accent=Color3.fromRGB(181,67,77),Panel=Color3.fromRGB(20,19,21),Card=Color3.fromRGB(36,34,38),Rail=Color3.fromRGB(31,29,33),Control=Color3.fromRGB(53,49,55),Text=Color3.fromRGB(211,207,213),Muted=Color3.fromRGB(135,128,138),Dark=Color3.fromRGB(11,10,12),White=Color3.fromRGB(190,184,192),Outline=Color3.fromRGB(87,80,90)},
+        Warm={Accent=Color3.fromRGB(196,139,74),Panel=Color3.fromRGB(30,27,24),Card=Color3.fromRGB(51,46,41),Rail=Color3.fromRGB(44,40,36),Control=Color3.fromRGB(70,63,56),Text=Color3.fromRGB(218,211,202),Muted=Color3.fromRGB(148,137,125),Dark=Color3.fromRGB(18,15,13),White=Color3.fromRGB(199,191,181),Outline=Color3.fromRGB(103,93,82)},
+        Plum={Accent=Color3.fromRGB(148,94,196),Panel=Color3.fromRGB(27,23,30),Card=Color3.fromRGB(49,42,54),Rail=Color3.fromRGB(43,37,48),Control=Color3.fromRGB(68,58,75),Text=Color3.fromRGB(216,208,220),Muted=Color3.fromRGB(145,133,151),Dark=Color3.fromRGB(16,13,18),White=Color3.fromRGB(197,187,202),Outline=Color3.fromRGB(100,87,107)},
     },
 }
 
@@ -78,7 +83,7 @@ local function new(class,props,parent)
     return object
 end
 local function corner(parent,r) return new("UICorner",{CornerRadius=UDim.new(0,r or 12)},parent) end
-local function stroke(parent,t) return bind(new("UIStroke",{Color=L.Colors.White,Transparency=t or 0.78,Thickness=1},parent),{Color="White"}) end
+local function stroke(parent,t) return bind(new("UIStroke",{Color=L.Colors.Outline,Transparency=t or 0.86,Thickness=1},parent),{Color="Outline"}) end
 local function pad(parent,l,r,t,b) return new("UIPadding",{PaddingLeft=UDim.new(0,l or 0),PaddingRight=UDim.new(0,r or 0),PaddingTop=UDim.new(0,t or 0),PaddingBottom=UDim.new(0,b or 0)},parent) end
 local function tween(object,props,d)
     if object and object.Parent then TS:Create(object,TweenInfo.new(d or 0.18,Enum.EasingStyle.Quint,Enum.EasingDirection.Out),props):Play() end
@@ -101,26 +106,30 @@ local function text(parent,value,size,color,bold)
 end
 local register
 local function drag(handle,target)
-    local active,dragInput,start,startCenter=false
+    local active,touchInput,startPointer,startAnchor=false
+    local function pointer(input)
+        if input and input.UserInputType==Enum.UserInputType.Touch then return Vector2.new(input.Position.X,input.Position.Y) end
+        return Vector2.new(Mouse.X,Mouse.Y)
+    end
     register(handle.InputBegan:Connect(function(i)
         if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
-            active=true;dragInput=i;start=i.Position;startCenter=target.AbsolutePosition+(target.AbsoluteSize/2)
-            i.Changed:Connect(function() if i.UserInputState==Enum.UserInputState.End then active=false;dragInput=nil end end)
+            active=true;touchInput=i.UserInputType==Enum.UserInputType.Touch and i or nil;startPointer=pointer(i)
+            startAnchor=target.AbsolutePosition+Vector2.new(target.AbsoluteSize.X*target.AnchorPoint.X,target.AbsoluteSize.Y*target.AnchorPoint.Y)
+            i.Changed:Connect(function() if i.UserInputState==Enum.UserInputState.End then active=false;touchInput=nil end end)
         end
     end))
-    register(handle.InputChanged:Connect(function(i)
-        if i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch then dragInput=i end
-    end))
     register(UIS.InputChanged:Connect(function(i)
-        if active and i==dragInput then
-            local d=i.Position-start
+        local movingMouse=i.UserInputType==Enum.UserInputType.MouseMovement and touchInput==nil
+        local movingTouch=touchInput~=nil and i==touchInput
+        if active and (movingMouse or movingTouch) then
+            local d=pointer(i)-startPointer
             local viewport=workspace.CurrentCamera.ViewportSize
-            local x=math.clamp(startCenter.X+d.X,-target.AbsoluteSize.X/2+20,viewport.X+target.AbsoluteSize.X/2-20)
-            local y=math.clamp(startCenter.Y+d.Y,-target.AbsoluteSize.Y/2+20,viewport.Y+target.AbsoluteSize.Y/2-20)
+            local x=math.clamp(startAnchor.X+d.X,20-target.AbsoluteSize.X*(1-target.AnchorPoint.X),viewport.X-20+target.AbsoluteSize.X*target.AnchorPoint.X)
+            local y=math.clamp(startAnchor.Y+d.Y,20-target.AbsoluteSize.Y*(1-target.AnchorPoint.Y),viewport.Y-20+target.AbsoluteSize.Y*target.AnchorPoint.Y)
             target.Position=UDim2.fromOffset(x,y)
         end
     end))
-    register(UIS.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then active=false;dragInput=nil end end))
+    register(UIS.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i==touchInput then active=false;touchInput=nil end end))
 end
 register=function(signal) table.insert(L.Signals,signal);return signal end
 
@@ -279,9 +288,9 @@ local function createCard(column,title,window)
         local r=row(45);rowTitle(r,info)
         finishOption(option,r)
         local value=text(r,"",10,L.Colors.Muted);value.AnchorPoint=Vector2.new(1,0);value.Position=UDim2.new(1,0,0,0);value.Size=UDim2.fromOffset(44,18);value.TextXAlignment=Enum.TextXAlignment.Right
-        local track=new("Frame",{AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,0,0,25),Size=UDim2.new(0.58,0,0,9),BackgroundColor3=L.Colors.Control},r);corner(track,5)
-        local fill=new("Frame",{BackgroundColor3=L.Colors.Accent,Size=UDim2.fromScale(0,1)},track);corner(fill,5)
-        local knob=new("Frame",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0,0.5),Size=UDim2.fromOffset(14,14),BackgroundColor3=L.Colors.White},track);corner(knob,7)
+        local track=bind(new("Frame",{AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,0,0,25),Size=UDim2.new(0.58,0,0,9),BackgroundColor3=L.Colors.Control},r),{BackgroundColor3="Control"});corner(track,5)
+        local fill=bind(new("Frame",{BackgroundColor3=L.Colors.Accent,Size=UDim2.fromScale(0,1)},track),{BackgroundColor3="Accent"});corner(fill,5)
+        local knob=bind(new("Frame",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0,0.5),Size=UDim2.fromOffset(14,14),BackgroundColor3=L.Colors.Text},track),{BackgroundColor3="Text"});corner(knob,7)
         function option:SetValue(v)
             local n=math.clamp(tonumber(v) or min,min,max)
             local rounding=info.Rounding or 0;n=tonumber(string.format("%."..rounding.."f",n))
@@ -289,7 +298,7 @@ local function createCard(column,title,window)
             callback(info.Callback,n);callback(self.Changed,n)
         end
         function option:OnChanged(fn) self.Changed=fn;fn(self.Value) end
-        function option:RefreshTheme() track.BackgroundColor3=L.Colors.Control;fill.BackgroundColor3=L.Colors.Accent;knob.BackgroundColor3=L.Colors.White end
+        function option:RefreshTheme() end
         local down=false
         track.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then down=true end end)
         register(UIS.InputChanged:Connect(function(i) if down and i.UserInputType==Enum.UserInputType.MouseMovement then option:SetValue(min+math.clamp((Mouse.X-track.AbsolutePosition.X)/track.AbsoluteSize.X,0,1)*(max-min)) end end))
@@ -335,10 +344,12 @@ local function createCard(column,title,window)
         function option:RefreshTheme() box.BackgroundColor3=L.Colors.Control;pop.BackgroundColor3=L.Colors.Card;render() end
         box.Activated:Connect(function()
             local opening=not pop.Visible;closePopups(pop)
+            local viewport=workspace.CurrentCamera.ViewportSize
             local maxHeight=math.min(#option.Values*31+10,190)
-            local x=math.clamp(box.AbsolutePosition.X,8,workspace.CurrentCamera.ViewportSize.X-box.AbsoluteSize.X-8)
-            local y=math.clamp(box.AbsolutePosition.Y+35,8,workspace.CurrentCamera.ViewportSize.Y-maxHeight-8)
-            pop.Position=UDim2.fromOffset(x,y);pop.Size=UDim2.fromOffset(box.AbsoluteSize.X,maxHeight);pop.Visible=opening
+            local x=math.clamp(box.AbsolutePosition.X,8,math.max(8,viewport.X-box.AbsoluteSize.X-8))
+            local y=box.AbsolutePosition.Y+box.AbsoluteSize.Y+6
+            local height=math.min(maxHeight,math.max(42,viewport.Y-y-8))
+            pop.Position=UDim2.fromOffset(x,y);pop.Size=UDim2.fromOffset(box.AbsoluteSize.X,height);pop.Visible=opening
         end)
         render();L.Options[index]=option;return option
     end
@@ -515,7 +526,7 @@ function L:CreateWindow(config)
             local sub={Title=name,Tab=tab}
             local sb=new("TextButton",{AutoButtonColor=false,BackgroundTransparency=1,Size=UDim2.fromOffset(math.max(76,#name*8+20),38),
                 Font=Enum.Font.Gotham,Text=name,TextColor3=L.Colors.Muted,TextSize=12,Visible=tab.Active},subtabs)
-            local line=new("Frame",{AnchorPoint=Vector2.new(0.5,1),Position=UDim2.new(0.5,0,1,0),Size=UDim2.new(1,-18,0,1),BackgroundColor3=L.Colors.White,BackgroundTransparency=1},sb)
+            local line=bind(new("Frame",{AnchorPoint=Vector2.new(0.5,1),Position=UDim2.new(0.5,0,1,0),Size=UDim2.new(1,-18,0,1),BackgroundColor3=L.Colors.Accent,BackgroundTransparency=1},sb),{BackgroundColor3="Accent"})
             local page=new("Frame",{Size=UDim2.fromScale(1,1),BackgroundTransparency=1,Visible=false},pages)
             sub.Root=page;sub.Button=sb;sub.Left=makeColumn(page,0,0.5,window);sub.Right=makeColumn(page,0.5,0.5,window)
             function sub:Show()

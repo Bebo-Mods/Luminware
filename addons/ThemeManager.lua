@@ -1,6 +1,6 @@
 local HttpService=game:GetService("HttpService")
 local ThemeManager={Library=nil,Folder="Luminware",Memory={}}
-local fields={"Accent","Panel","Card","Rail","Control","Text","Muted","Dark","White"}
+local fields={"Accent","Panel","Card","Rail","Control","Text","Muted","Dark","White","Outline"}
 local hasFiles=typeof(writefile)=="function" and typeof(readfile)=="function" and typeof(isfile)=="function"
 
 local function ensure(path)
