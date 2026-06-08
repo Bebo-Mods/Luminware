@@ -1,4 +1,22 @@
+--[[
+    ██████╗ ██╗  ██╗ █████╗ ███╗   ██╗████████╗ ██████╗ ███╗   ███╗
+    ██╔══██╗██║  ██║██╔══██╗████╗  ██║╚══██╔══╝██╔═══██╗████╗ ████║
+    ██████╔╝███████║███████║██╔██╗ ██║   ██║   ██║   ██║██╔████╔██║
+    ██╔═══╝ ██╔══██║██╔══██║██║╚██╗██║   ██║   ██║   ██║██║╚██╔╝██║
+    ██║     ██║  ██║██║  ██║██║ ╚████║   ██║   ╚██████╔╝██║ ╚═╝ ██║
+    ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝   ╚═╝    ╚═════╝ ╚═╝     ╚═╝
+    UI Library v5.0 — Executor-runnable, no LocalScript required.
+    
+    USAGE:
+        local Phantom = loadstring(...)() -- or paste + run
+        local Window  = Phantom:CreateWindow({ Title = "PHANTOM", AutoShow = true })
+        local Tab     = Window:AddTab("AIM")
+        local Box     = Tab:AddLeftGroupbox("Targeting")
+        Box:AddToggle("MasterSwitch", { Text = "Master Switch", Default = true, Callback = function(v) end })
+        Box:AddSlider("Fov", { Text = "FOV", Min = 1, Max = 180, Default = 45, Rounding = 0 })
 
+    KEYBIND TO TOGGLE: RightShift or RightControl (same as reference library)
+]]
 
 -- ============================================================
 -- SERVICES
@@ -34,8 +52,10 @@ ScreenGui.Parent = (gethui and gethui()) or CoreGui
 local Toggles = {}
 local Options  = {}
 
-getgenv().Toggles = Toggles
-getgenv().Options  = Options
+-- Safe getgenv — some executors don't support it
+local _genv = (typeof(getgenv) == "function" and pcall(getgenv) and getgenv()) or {}
+_genv.Toggles = Toggles
+_genv.Options  = Options
 
 -- ============================================================
 -- LIBRARY CORE
@@ -2654,5 +2674,6 @@ end
 -- ============================================================
 -- EXPOSE & RETURN
 -- ============================================================
-getgenv().PhantomUI = Phantom
+local _genv2 = (typeof(getgenv) == "function" and pcall(getgenv) and getgenv()) or {}
+_genv2.PhantomUI = Phantom
 return Phantom
