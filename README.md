@@ -9,7 +9,7 @@ Luminware is a reusable Roblox UI library with Fluent-style presentation, Linori
 - Popups are bounded, window-owned, correctly layered, and closed during navigation/lifecycle changes.
 - Cards and columns use measured automatic layouts with bounded scrolling.
 - Every connection, popup, window, blur effect, and callback has explicit cleanup ownership.
-- Windows drag from empty header space with mouse or touch and remain clamped to the viewport.
+- Windows follow mouse or touch directly from empty header space and remain bounded to the viewport.
 
 ## Features
 
@@ -19,6 +19,8 @@ Luminware is a reusable Roblox UI library with Fluent-style presentation, Linori
 - Toggles, sliders, single/multi dropdowns, inputs, keybinds, and full HSV color pickers
 - Dialogs, notifications, watermark, themes, acrylic, configs, autoload, and interface settings
 - Animated loading screen, window entrance, and interactive control transitions
+- Responsive resizing, mobile mode, draggable restore icon, and live performance watermark
+- Visual-only FOV circle and ESP-style preview APIs for interface demonstrations
 - `Library.Options`, `Library.Toggles`, `OnChanged`, `OnClick`, `SetValue`, `SetVisible`, and `SetDisabled`
 
 ## Load
@@ -31,6 +33,8 @@ local Library=loadstring(game:HttpGet(
 local Window=Library:CreateWindow({
     Size=UDim2.fromOffset(900,600),
     Acrylic=true,
+    MobileMode=false,
+    SmallIcon=true,
 })
 
 local Home=Window:AddTab({Title="Home",IconText="S"})

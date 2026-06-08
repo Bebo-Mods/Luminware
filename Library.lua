@@ -6,6 +6,8 @@ local UIS=game:GetService("UserInputService")
 local RS=game:GetService("RunService")
 local Players=game:GetService("Players")
 local Lighting=game:GetService("Lighting")
+local Stats=game:GetService("Stats")
+local MarketplaceService=game:GetService("MarketplaceService")
 
 local Player=Players.LocalPlayer or Players.PlayerAdded:Wait()
 local Mouse=Player:GetMouse()
@@ -52,7 +54,7 @@ local L={
         Carbon={Accent=Color3.fromRGB(95,164,214),Panel=Color3.fromRGB(17,18,20),Card=Color3.fromRGB(31,33,36),Rail=Color3.fromRGB(27,29,32),Control=Color3.fromRGB(48,51,55),Text=Color3.fromRGB(205,208,212),Muted=Color3.fromRGB(123,128,134),Dark=Color3.fromRGB(9,10,12),White=Color3.fromRGB(181,185,190),Outline=Color3.fromRGB(78,83,89)},
         Graphite={Accent=Color3.fromRGB(126,142,158),Panel=Color3.fromRGB(27,29,31),Card=Color3.fromRGB(48,51,54),Rail=Color3.fromRGB(43,46,49),Control=Color3.fromRGB(67,71,75),Text=Color3.fromRGB(216,218,220),Muted=Color3.fromRGB(143,147,151),Dark=Color3.fromRGB(17,18,20),White=Color3.fromRGB(195,198,201),Outline=Color3.fromRGB(100,105,110)},
         Midnight={Accent=Color3.fromRGB(77,126,214),Panel=Color3.fromRGB(17,21,29),Card=Color3.fromRGB(31,37,48),Rail=Color3.fromRGB(27,33,43),Control=Color3.fromRGB(46,55,70),Text=Color3.fromRGB(207,214,225),Muted=Color3.fromRGB(124,134,150),Dark=Color3.fromRGB(10,13,19),White=Color3.fromRGB(184,193,207),Outline=Color3.fromRGB(77,88,105)},
-        Obsidian={Accent=Color3.fromRGB(181,67,77),Panel=Color3.fromRGB(20,19,21),Card=Color3.fromRGB(36,34,38),Rail=Color3.fromRGB(31,29,33),Control=Color3.fromRGB(53,49,55),Text=Color3.fromRGB(211,207,213),Muted=Color3.fromRGB(135,128,138),Dark=Color3.fromRGB(11,10,12),White=Color3.fromRGB(190,184,192),Outline=Color3.fromRGB(87,80,90)},
+        Obsidian={Accent=Color3.fromRGB(204,91,99),Panel=Color3.fromRGB(31,29,32),Card=Color3.fromRGB(51,48,53),Rail=Color3.fromRGB(45,42,47),Control=Color3.fromRGB(70,65,72),Text=Color3.fromRGB(224,218,225),Muted=Color3.fromRGB(155,146,157),Dark=Color3.fromRGB(21,19,22),White=Color3.fromRGB(207,199,208),Outline=Color3.fromRGB(111,101,113)},
         Warm={Accent=Color3.fromRGB(196,139,74),Panel=Color3.fromRGB(30,27,24),Card=Color3.fromRGB(51,46,41),Rail=Color3.fromRGB(44,40,36),Control=Color3.fromRGB(70,63,56),Text=Color3.fromRGB(218,211,202),Muted=Color3.fromRGB(148,137,125),Dark=Color3.fromRGB(18,15,13),White=Color3.fromRGB(199,191,181),Outline=Color3.fromRGB(103,93,82)},
         Plum={Accent=Color3.fromRGB(148,94,196),Panel=Color3.fromRGB(27,23,30),Card=Color3.fromRGB(49,42,54),Rail=Color3.fromRGB(43,37,48),Control=Color3.fromRGB(68,58,75),Text=Color3.fromRGB(216,208,220),Muted=Color3.fromRGB(145,133,151),Dark=Color3.fromRGB(16,13,18),White=Color3.fromRGB(197,187,202),Outline=Color3.fromRGB(100,87,107)},
     },
@@ -113,7 +115,8 @@ local function text(parent,value,size,color,bold)
 end
 local register
 local function drag(handle,target)
-    local active,touchInput,startPointer,startAnchor=false
+    local active,touchInput,startPointer,startPosition=false
+    local state={Moved=false}
     local function pointer(input)
         if input and input.UserInputType==Enum.UserInputType.Touch then return Vector2.new(input.Position.X,input.Position.Y) end
         return Vector2.new(Mouse.X,Mouse.Y)
@@ -121,7 +124,8 @@ local function drag(handle,target)
     register(handle.InputBegan:Connect(function(i)
         if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
             active=true;touchInput=i.UserInputType==Enum.UserInputType.Touch and i or nil;startPointer=pointer(i)
-            startAnchor=target.AbsolutePosition+Vector2.new(target.AbsoluteSize.X*target.AnchorPoint.X,target.AbsoluteSize.Y*target.AnchorPoint.Y)
+            state.Moved=false
+            startPosition=target.Position
             i.Changed:Connect(function() if i.UserInputState==Enum.UserInputState.End then active=false;touchInput=nil end end)
         end
     end))
@@ -130,13 +134,17 @@ local function drag(handle,target)
         local movingTouch=touchInput~=nil and i==touchInput
         if active and (movingMouse or movingTouch) then
             local d=pointer(i)-startPointer
+            if d.Magnitude>3 then state.Moved=true end
             local viewport=workspace.CurrentCamera.ViewportSize
-            local x=math.clamp(startAnchor.X+d.X,20-target.AbsoluteSize.X*(1-target.AnchorPoint.X),viewport.X-20+target.AbsoluteSize.X*target.AnchorPoint.X)
-            local y=math.clamp(startAnchor.Y+d.Y,20-target.AbsoluteSize.Y*(1-target.AnchorPoint.Y),viewport.Y-20+target.AbsoluteSize.Y*target.AnchorPoint.Y)
-            target.Position=UDim2.fromOffset(x,y)
+            local rawX=viewport.X*startPosition.X.Scale+startPosition.X.Offset+d.X
+            local rawY=viewport.Y*startPosition.Y.Scale+startPosition.Y.Offset+d.Y
+            local x=math.clamp(rawX,20-target.AbsoluteSize.X*(1-target.AnchorPoint.X),viewport.X-20+target.AbsoluteSize.X*target.AnchorPoint.X)
+            local y=math.clamp(rawY,20-target.AbsoluteSize.Y*(1-target.AnchorPoint.Y),viewport.Y-20+target.AbsoluteSize.Y*target.AnchorPoint.Y)
+            target.Position=UDim2.new(startPosition.X.Scale,x-viewport.X*startPosition.X.Scale,startPosition.Y.Scale,y-viewport.Y*startPosition.Y.Scale)
         end
     end))
     register(UIS.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i==touchInput then active=false;touchInput=nil end end))
+    return state
 end
 register=function(signal) table.insert(L.Signals,signal);return signal end
 
@@ -162,11 +170,32 @@ register(UIS.InputBegan:Connect(function(input)
     end
 end))
 
-local Watermark=bind(new("Frame",{Visible=false,Position=UDim2.fromOffset(12,12),Size=UDim2.fromOffset(240,30),
+local Watermark=bind(new("Frame",{Visible=false,Active=true,Position=UDim2.fromOffset(12,12),Size=UDim2.fromOffset(410,30),
     BackgroundColor3=L.Colors.Card,BackgroundTransparency=0.12,ZIndex=290},Screen),{BackgroundColor3="Card"})
 corner(Watermark,13);stroke(Watermark,0.68)
 local WatermarkText=text(Watermark,"Luminware",10,L.Colors.Text,true);WatermarkText.Position=UDim2.fromOffset(11,0);WatermarkText.Size=UDim2.new(1,-22,1,0)
-function L:SetWatermark(value) WatermarkText.Text=tostring(value) end
+local WatermarkPrefix="Luminware"
+local ExperienceName=game.Name
+local fps,frames,lastFps=0,0,os.clock()
+drag(Watermark,Watermark)
+task.spawn(function()
+    local ok,info=pcall(MarketplaceService.GetProductInfo,MarketplaceService,game.PlaceId)
+    if ok and info and info.Name then ExperienceName=info.Name end
+end)
+register(RS.RenderStepped:Connect(function()
+    frames+=1
+    local now=os.clock()
+    if now-lastFps>=1 then fps=math.floor(frames/(now-lastFps)+0.5);frames=0;lastFps=now end
+end))
+task.spawn(function()
+    while Screen.Parent do
+        local ping="?"
+        pcall(function() ping=Stats.Network.ServerStatsItem["Data Ping"]:GetValueString():match("[%d%.]+") or "?" end)
+        WatermarkText.Text=("%s  |  %s  |  %d FPS  |  %sms"):format(WatermarkPrefix,ExperienceName,fps,ping)
+        task.wait(0.5)
+    end
+end)
+function L:SetWatermark(value) WatermarkPrefix=tostring(value) end
 function L:SetWatermarkVisibility(value) Watermark.Visible=not not value end
 function L:OnUnload(fn) table.insert(self.OnUnloadCallbacks,fn) end
 
@@ -193,18 +222,22 @@ end
 
 function L:CreateLoader(info)
     info=type(info)=="string" and {Title=info} or info or {}
-    local overlay=new("CanvasGroup",{Active=true,Size=UDim2.fromScale(1,1),BackgroundColor3=self.Colors.Dark,BackgroundTransparency=0.12,
-        GroupTransparency=1,ZIndex=400},Screen)
-    local card=bind(new("CanvasGroup",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.new(0.5,0,0.5,12),Size=UDim2.fromOffset(390,164),
-        BackgroundColor3=self.Colors.Panel,BackgroundTransparency=0.04,GroupTransparency=1,ZIndex=401},overlay),{BackgroundColor3="Panel"})
-    corner(card,22);stroke(card,0.72)
-    local mark=bind(new("Frame",{Position=UDim2.fromOffset(22,22),Size=UDim2.fromOffset(5,42),BackgroundColor3=self.Colors.Accent,ZIndex=402},card),{BackgroundColor3="Accent"});corner(mark,3)
-    local title=text(card,info.Title or "Luminware",16,self.Colors.Text,true);title.Position=UDim2.fromOffset(42,20);title.Size=UDim2.new(1,-64,0,24);title.ZIndex=402
-    local subtitle=text(card,info.Subtitle or "Initializing interface",10,self.Colors.Muted);subtitle.Position=UDim2.fromOffset(42,44);subtitle.Size=UDim2.new(1,-64,0,20);subtitle.ZIndex=402
-    local status=text(card,info.Status or "Starting",10,self.Colors.Muted);status.Position=UDim2.fromOffset(22,86);status.Size=UDim2.new(1,-74,0,18);status.ZIndex=402
-    local percent=text(card,"0%",10,self.Colors.Text,true);percent.AnchorPoint=Vector2.new(1,0);percent.Position=UDim2.new(1,-22,0,86);percent.Size=UDim2.fromOffset(42,18);percent.TextXAlignment=Enum.TextXAlignment.Right;percent.ZIndex=402
+    self.LoaderActive=true
+    local blur=Lighting:FindFirstChild("LuminwareBlur")
+    if blur then blur.Size=0 end
+    local overlay=new("Frame",{Active=true,Size=UDim2.fromScale(1,1),BackgroundColor3=self.Colors.Dark,BackgroundTransparency=1,ZIndex=400},Screen)
+    local card=bind(new("Frame",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.new(0.5,0,0.5,10),Size=UDim2.fromOffset(390,164),
+        BackgroundColor3=self.Colors.Panel,BackgroundTransparency=1,ZIndex=401},overlay),{BackgroundColor3="Panel"})
+    corner(card,20);local cardStroke=stroke(card,1)
+    local mark=bind(new("Frame",{Position=UDim2.fromOffset(22,22),Size=UDim2.fromOffset(4,42),BackgroundColor3=self.Colors.Accent,BackgroundTransparency=1,ZIndex=402},card),{BackgroundColor3="Accent"});corner(mark,2)
+    local title=text(card,info.Title or "Luminware",15,self.Colors.Text,true);title.Position=UDim2.fromOffset(42,20);title.Size=UDim2.new(1,-64,0,24);title.TextTransparency=1;title.ZIndex=402
+    local subtitle=text(card,info.Subtitle or "Initializing interface",10,self.Colors.Muted);subtitle.Position=UDim2.fromOffset(42,44);subtitle.Size=UDim2.new(1,-64,0,20);subtitle.TextTransparency=1;subtitle.ZIndex=402
+    local status=text(card,info.Status or "Starting",10,self.Colors.Muted);status.Position=UDim2.fromOffset(22,86);status.Size=UDim2.new(1,-74,0,18);status.TextTransparency=1;status.ZIndex=402
+    local percent=text(card,"0%",10,self.Colors.Text,true);percent.AnchorPoint=Vector2.new(1,0);percent.Position=UDim2.new(1,-22,0,86);percent.Size=UDim2.fromOffset(42,18);percent.TextXAlignment=Enum.TextXAlignment.Right;percent.TextTransparency=1;percent.ZIndex=402
     local track=bind(new("Frame",{Position=UDim2.fromOffset(22,116),Size=UDim2.new(1,-44,0,5),BackgroundColor3=self.Colors.Control,BackgroundTransparency=0.15,ZIndex=402},card),{BackgroundColor3="Control"});corner(track,3)
+    track.BackgroundTransparency=1
     local fill=bind(new("Frame",{Size=UDim2.fromScale(0,1),BackgroundColor3=self.Colors.Accent,ZIndex=403},track),{BackgroundColor3="Accent"});corner(fill,3)
+    fill.BackgroundTransparency=1
     local api={Root=overlay,Value=0}
     function api:SetProgress(value,newStatus)
         self.Value=math.clamp(tonumber(value) or 0,0,1)
@@ -213,24 +246,68 @@ function L:CreateLoader(info)
         tween(fill,{Size=UDim2.fromScale(self.Value,1)},0.32)
     end
     function api:SetStatus(value) status.Text=tostring(value) end
+    function api:Run(steps)
+        task.spawn(function()
+            for i,step in ipairs(steps or {}) do
+                self:SetProgress(step.Progress or i/#steps,step.Status or step.Title)
+                if typeof(step.Callback)=="function" then pcall(step.Callback) end
+                task.wait(step.Duration or 0.25)
+            end
+            self:Complete(info.CompleteText or "Ready")
+        end)
+        return self
+    end
     function api:Complete(finalStatus)
         if not overlay.Parent then return end
         self:SetProgress(1,finalStatus or "Ready")
         task.delay(0.28,function()
             if not overlay.Parent then return end
-            tween(card,{Position=UDim2.new(0.5,0,0.5,-8),GroupTransparency=1},0.28)
-            tween(overlay,{GroupTransparency=1},0.32)
-            task.wait(0.36);overlay:Destroy()
+            tween(card,{Position=UDim2.new(0.5,0,0.5,-8),BackgroundTransparency=1},0.28)
+            tween(cardStroke,{Transparency=1},0.24);tween(mark,{BackgroundTransparency=1},0.2)
+            for _,label in ipairs({title,subtitle,status,percent}) do tween(label,{TextTransparency=1},0.2) end
+            tween(track,{BackgroundTransparency=1},0.2);tween(fill,{BackgroundTransparency=1},0.2);tween(overlay,{BackgroundTransparency=1},0.32)
+            task.wait(0.36);overlay:Destroy();L.LoaderActive=false
+            if L.AcrylicRequested then L:ToggleAcrylic(true) end
         end)
     end
-    tween(overlay,{GroupTransparency=0},0.25)
-    tween(card,{Position=UDim2.fromScale(0.5,0.5),GroupTransparency=0},0.4)
+    tween(overlay,{BackgroundTransparency=0.28},0.22)
+    tween(card,{Position=UDim2.fromScale(0.5,0.5),BackgroundTransparency=0.02},0.34);tween(cardStroke,{Transparency=0.72},0.3)
+    tween(mark,{BackgroundTransparency=0},0.24);tween(track,{BackgroundTransparency=0.18},0.28);tween(fill,{BackgroundTransparency=0},0.28)
+    for _,label in ipairs({title,subtitle,status,percent}) do tween(label,{TextTransparency=0},0.28) end
     task.spawn(function()
         while overlay.Parent do
-            tween(mark,{BackgroundTransparency=0.48},0.7);task.wait(0.7)
+            tween(mark,{BackgroundTransparency=0.38},0.7);task.wait(0.7)
             tween(mark,{BackgroundTransparency=0},0.7);task.wait(0.7)
         end
     end)
+    return api
+end
+
+function L:CreateFOVCircle(info)
+    info=info or {}
+    local circle=new("Frame",{Visible=not not info.Visible,AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.5),
+        Size=UDim2.fromOffset((info.Radius or 120)*2,(info.Radius or 120)*2),BackgroundTransparency=1,ZIndex=280},Screen)
+    corner(circle,999);local outline=bind(new("UIStroke",{Color=info.Color or self.Colors.Accent,Transparency=info.Transparency or 0.18,Thickness=info.Thickness or 1.5},circle),{Color="Accent"})
+    local api={Root=circle,Radius=info.Radius or 120}
+    function api:SetVisible(value) circle.Visible=not not value end
+    function api:SetRadius(value) self.Radius=math.clamp(tonumber(value) or self.Radius,20,500);tween(circle,{Size=UDim2.fromOffset(self.Radius*2,self.Radius*2)},0.18) end
+    function api:SetPosition(value) circle.Position=UDim2.fromOffset(value.X,value.Y) end
+    function api:SetColor(value) L.Registry[outline]=nil;outline.Color=value end
+    return api
+end
+
+function L:CreateESPPreview(info)
+    info=info or {}
+    local box=new("Frame",{Visible=not not info.Visible,AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.5),
+        Size=UDim2.fromOffset(130,190),BackgroundTransparency=1,ZIndex=281},Screen)
+    local outline=bind(new("UIStroke",{Color=self.Colors.Accent,Transparency=0.08,Thickness=1.5},box),{Color="Accent"})
+    local label=text(box,info.Text or "VISUAL PREVIEW",10,self.Colors.Text,true);label.AnchorPoint=Vector2.new(0.5,1);label.Position=UDim2.new(0.5,0,0,-7);label.Size=UDim2.fromOffset(160,18);label.TextXAlignment=Enum.TextXAlignment.Center
+    local health=bind(new("Frame",{AnchorPoint=Vector2.new(1,0),Position=UDim2.fromOffset(-6,0),Size=UDim2.fromOffset(3,190),BackgroundColor3=self.Colors.Dark,ZIndex=282},box),{BackgroundColor3="Dark"});corner(health,2)
+    local healthFill=bind(new("Frame",{AnchorPoint=Vector2.new(0,1),Position=UDim2.fromScale(0,1),Size=UDim2.fromScale(1,0.78),BackgroundColor3=self.Colors.Accent,ZIndex=283},health),{BackgroundColor3="Accent"});corner(healthFill,2)
+    local api={Root=box}
+    function api:SetVisible(value) box.Visible=not not value end
+    function api:SetHealth(value) tween(healthFill,{Size=UDim2.fromScale(1,math.clamp(tonumber(value) or 0,0,1))},0.2) end
+    function api:SetText(value) label.Text=tostring(value) end
     return api
 end
 
@@ -546,7 +623,10 @@ end
 
 function L:CreateWindow(config)
     config=config or {};local width=config.Size and config.Size.X.Offset or 900;local height=config.Size and config.Size.Y.Offset or 600
-    local window={Tabs={},TabOrder={}}
+    local window={Tabs={},TabOrder={},MobileMode=not not config.MobileMode,SmallIconEnabled=config.SmallIcon~=false}
+    local desktopSize=Vector2.new(width,height)
+    local mobileSize=Vector2.new(config.MobileSize and config.MobileSize.X.Offset or 720,config.MobileSize and config.MobileSize.Y.Offset or 480)
+    if window.MobileMode then width=mobileSize.X;height=mobileSize.Y end
     local root=new("Frame",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.5),Size=UDim2.fromOffset(width,height),BackgroundTransparency=1},Screen)
     local scale=new("UIScale",{Scale=0.965},root)
     local panel=bind(new("Frame",{Size=UDim2.fromScale(1,1),BackgroundColor3=self.Colors.Panel,BackgroundTransparency=1,ClipsDescendants=true},root),{BackgroundColor3="Panel"});corner(panel,28);stroke(panel,0.78)
@@ -567,12 +647,40 @@ function L:CreateWindow(config)
     local avatar=new("ImageLabel",{AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,0,0,6),Size=UDim2.fromOffset(32,32),BackgroundColor3=self.Colors.White,
         Image=("rbxthumb://type=AvatarHeadShot&id=%d&w=150&h=150"):format(Player.UserId),ZIndex=2},header);corner(avatar,16);stroke(avatar,0.25)
     local pages=new("Frame",{Position=UDim2.fromOffset(0,56),Size=UDim2.new(1,0,1,-56),BackgroundTransparency=1,ClipsDescendants=true},content)
+    local resizeGrip=bind(new("TextButton",{AutoButtonColor=false,Text="",AnchorPoint=Vector2.new(1,1),Position=UDim2.new(1,-7,1,-7),
+        Size=UDim2.fromOffset(22,22),BackgroundColor3=self.Colors.Control,BackgroundTransparency=0.72,ZIndex=20},panel),{BackgroundColor3="Control"});corner(resizeGrip,8)
+    local gripLine=bind(new("Frame",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.5),Size=UDim2.fromOffset(8,2),
+        Rotation=-45,BackgroundColor3=self.Colors.Muted,ZIndex=21},resizeGrip),{BackgroundColor3="Muted"});corner(gripLine,1)
+    local icon=bind(new("TextButton",{Visible=false,AutoButtonColor=false,Text=initial,Font=Enum.Font.GothamMedium,TextSize=14,TextColor3=self.Colors.Text,
+        Position=UDim2.fromOffset(18,70),Size=UDim2.fromOffset(48,48),BackgroundColor3=self.Colors.Panel,BackgroundTransparency=0.06,ZIndex=295},Screen),{BackgroundColor3="Panel",TextColor3="Text"})
+    corner(icon,16);stroke(icon,0.66);local iconDrag=drag(icon,icon)
     local function resize()
-        local v=workspace.CurrentCamera.ViewportSize;scale.Scale=math.min(1,v.X/(width+50),v.Y/(height+50))
+        local v=workspace.CurrentCamera.ViewportSize
+        local logical=root.Size
+        scale.Scale=math.min(1,v.X/(logical.X.Offset+36),v.Y/(logical.Y.Offset+36))
     end
     resize();local finalScale=scale.Scale;scale.Scale=finalScale*0.965;tween(scale,{Scale=finalScale},0.38);tween(panel,{BackgroundTransparency=0.17},0.32)
     register(workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(resize))
-    power.Activated:Connect(function() self:Unload() end)
+    local resizing,startPointer,startSize=false
+    resizeGrip.InputBegan:Connect(function(input)
+        if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
+            resizing=true;startPointer=input.UserInputType==Enum.UserInputType.Touch and input.Position or Vector2.new(Mouse.X,Mouse.Y)
+            startSize=Vector2.new(root.Size.X.Offset,root.Size.Y.Offset)
+            tween(resizeGrip,{BackgroundTransparency=0.3},0.12)
+        end
+    end)
+    register(UIS.InputChanged:Connect(function(input)
+        if resizing and (input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch) then
+            local point=input.UserInputType==Enum.UserInputType.Touch and input.Position or Vector2.new(Mouse.X,Mouse.Y)
+            local delta=(point-startPointer)/math.max(scale.Scale,0.01)
+            root.Size=UDim2.fromOffset(math.clamp(startSize.X+delta.X,620,1200),math.clamp(startSize.Y+delta.Y,420,820))
+            resize()
+        end
+    end))
+    register(UIS.InputEnded:Connect(function(input)
+        if resizing and (input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch) then resizing=false;tween(resizeGrip,{BackgroundTransparency=0.72},0.12) end
+    end))
+    power.Activated:Connect(function() window:Minimize() end)
     search:GetPropertyChangedSignal("Text"):Connect(function()
         local q=search.Text:lower()
         for _,tab in ipairs(window.TabOrder) do for _,sub in ipairs(tab.SubtabOrder) do
@@ -667,12 +775,29 @@ function L:CreateWindow(config)
         window.Tabs[title]=tab;table.insert(window.TabOrder,tab);if #window.TabOrder==1 then tab:Show() end;return tab
     end
     function window:SelectTab(which) local tab=type(which)=="number" and self.TabOrder[which] or self.Tabs[which];if tab then tab:Show() end end
-    function window:Toggle() closePopups();root.Visible=not root.Visible end
-    function window:Minimize() root.Visible=false end
+    function window:SetVisible(value)
+        closePopups();root.Visible=not not value
+        icon.Visible=not root.Visible and self.SmallIconEnabled
+        if root.Visible then
+            resize();local targetScale=scale.Scale;scale.Scale=targetScale*0.97;panel.BackgroundTransparency=0.5
+            tween(scale,{Scale=targetScale},0.24);tween(panel,{BackgroundTransparency=0.17},0.2)
+        elseif icon.Visible then
+            icon.Size=UDim2.fromOffset(42,42);icon.BackgroundTransparency=0.5
+            tween(icon,{Size=UDim2.fromOffset(48,48),BackgroundTransparency=0.06},0.22)
+        end
+    end
+    function window:Toggle() self:SetVisible(not root.Visible) end
+    function window:Minimize() self:SetVisible(false) end
+    function window:SetSmallIconEnabled(value) self.SmallIconEnabled=not not value;icon.Visible=not root.Visible and self.SmallIconEnabled end
+    function window:SetMobileMode(value)
+        self.MobileMode=not not value
+        local size=self.MobileMode and mobileSize or desktopSize
+        tween(root,{Size=UDim2.fromOffset(size.X,size.Y)},0.28);task.delay(0.3,resize)
+    end
     function window:Destroy()
         closePopups()
         for popup,owner in next,L.Popups do if owner==window then unbind(popup);popup:Destroy() end end
-        root:Destroy()
+        icon:Destroy();root:Destroy()
     end
     function window:Dialog(info)
         info=info or {};closePopups();local shade=ownPopup(new("TextButton",{AutoButtonColor=false,Text="",BackgroundColor3=Color3.new(),BackgroundTransparency=0.45,Size=UDim2.fromScale(1,1),ZIndex=250},Screen),window)
@@ -685,6 +810,7 @@ function L:CreateWindow(config)
         shade.Activated:Connect(function() shade:Destroy() end)
     end
     window.Root=root;window.Panel=panel;self.Window=window;table.insert(self.Windows,window)
+    icon.Activated:Connect(function() if not iconDrag.Moved then window:SetVisible(true) end end)
     if config.Acrylic~=false then self:ToggleAcrylic(true) end
     return window
 end
@@ -704,10 +830,13 @@ function L:UpdateColorsUsingRegistry()
     for _,option in next,self.Options do if option.RefreshTheme then option:RefreshTheme() end end
 end
 function L:ToggleAcrylic(value)
+    self.AcrylicRequested=value~=false
     local blur=Lighting:FindFirstChild("LuminwareBlur") or new("BlurEffect",{Name="LuminwareBlur",Size=0},Lighting)
-    tween(blur,{Size=value==false and 0 or 8},0.2)
+    tween(blur,{Size=(value==false or self.LoaderActive) and 0 or 4},0.2)
 end
 function L:ToggleTransparency(value) for _,w in ipairs(self.Windows) do tween(w.Panel,{BackgroundTransparency=value and 0.35 or 0.17}) end end
+function L:SetMobileMode(value) if self.Window then self.Window:SetMobileMode(value) end end
+function L:SetSmallIconEnabled(value) if self.Window then self.Window:SetSmallIconEnabled(value) end end
 function L:AttemptSave() if self.SaveManager and self.SaveManager.Save then pcall(function()self.SaveManager:Save()end) end end
 function L:Destroy() self:Unload() end
 function L:Unload()

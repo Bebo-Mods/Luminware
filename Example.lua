@@ -3,25 +3,32 @@ local Library=loadstring(game:HttpGet(base.."Library.lua"))()
 local SaveManager=loadstring(game:HttpGet(base.."addons/SaveManager.lua"))()
 local ThemeManager=loadstring(game:HttpGet(base.."addons/ThemeManager.lua"))()
 local InterfaceManager=loadstring(game:HttpGet(base.."addons/InterfaceManager.lua"))()
+local Global=typeof(getgenv)=="function" and getgenv() or {}
+local BootMobile=Global.LuminwareMobileMode
+if BootMobile==nil then BootMobile=game:GetService("UserInputService").TouchEnabled end
+local BootSmallIcon=Global.LuminwareSmallIcon~=false
 
 local Loader=Library:CreateLoader({Title="Luminware",Subtitle="Preparing concept interface"})
-Loader:SetProgress(0.28,"Loading components")
-task.wait(0.18)
-Loader:SetProgress(0.68,"Applying theme and settings")
-task.wait(0.18)
+Loader:SetProgress(0.12,"Creating responsive window")
+task.wait(0.1)
 
 local Window=Library:CreateWindow({
     Size=UDim2.fromOffset(900,600),
     Acrylic=true,
+    MobileMode=BootMobile,
+    SmallIcon=BootSmallIcon,
 })
 
 local Tabs={
     Home=Window:AddTab({Title="Home",IconText="S"}),
     Controls=Window:AddTab({Title="Controls",IconText="C"}),
     Layouts=Window:AddTab({Title="Layouts",IconText="L"}),
+    Visuals=Window:AddTab({Title="Visuals",IconText="V"}),
     State=Window:AddTab({Title="State",IconText="D"}),
     Settings=Window:AddTab({Title="Settings",IconText="G"}),
 }
+Loader:SetProgress(0.32,"Building controls")
+task.wait(0.08)
 
 -- Original concept layout
 local Main=Tabs.Home:AddSubtab("Subtab 1")
@@ -96,6 +103,19 @@ local RightTabbox=Tabs.Layouts:AddRightTabbox()
 RightTabbox:AddTab("Page One"):AddInput("TabboxInput",{Text="Tabbox input"})
 RightTabbox:AddTab("Page Two"):AddDropdown("TabboxDropdown",{Text="Tabbox dropdown",Values={"A","B","C"},Default=1})
 
+-- Visual-only overlay previews; these do not target or inspect players.
+local FOVPreview=Library:CreateFOVCircle({Radius=120})
+local ESPPreview=Library:CreateESPPreview({Text="VISUAL PREVIEW"})
+local VisualControls=Tabs.Visuals:AddLeftGroupbox("Overlay previews")
+VisualControls:AddParagraph({Title="Visual demonstrations",Content="Static UI previews for styling and configuration testing."})
+VisualControls:AddToggle("ShowFOVPreview",{Text="Show FOV circle",Callback=function(value)FOVPreview:SetVisible(value)end})
+VisualControls:AddSlider("FOVRadius",{Text="FOV circle radius",Min=40,Max=300,Default=120,Rounding=0,Callback=function(value)FOVPreview:SetRadius(value)end})
+VisualControls:AddToggle("ShowESPPreview",{Text="Show ESP-style preview",Callback=function(value)ESPPreview:SetVisible(value)end})
+VisualControls:AddSlider("PreviewHealth",{Text="Preview health",Min=0,Max=100,Default=78,Rounding=0,Callback=function(value)ESPPreview:SetHealth(value/100)end})
+Tabs.Visuals:AddRightGroupbox("Preview notes"):AddParagraph({Title="Display only",Content="These overlays are visual examples only and contain no targeting or player inspection logic."})
+Loader:SetProgress(0.62,"Connecting state and previews")
+task.wait(0.08)
+
 -- State and API showcase
 local Dependencies=Tabs.State:AddLeftGroupbox("Dependencies")
 Dependencies:AddToggle("DependencyToggle",{Text="Show dependent controls",Default=true})
@@ -137,6 +157,8 @@ ThemeManager:BuildSection(Tabs.Settings)
 
 InterfaceManager:SetLibrary(Library)
 InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+Loader:SetProgress(0.9,"Applying settings")
+task.wait(0.08)
 
 Window:SelectTab(1)
 Library:SetWatermark("Luminware "..Library.Version)
