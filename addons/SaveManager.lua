@@ -8,11 +8,15 @@ local function ensure(folder)
 end
 local function path(self,name) return self.Folder.."/"..name..".json" end
 
-function SaveManager:SetLibrary(library) self.Library=library end
+function SaveManager:SetLibrary(library) self.Library=library;library.SaveManager=self end
 function SaveManager:SetFolder(folder) self.Folder=folder;ensure(folder) end
 function SaveManager:SetIgnoreIndexes(indexes) for _,index in ipairs(indexes or {}) do self.Ignore[index]=true end end
 function SaveManager:SetIgnore(indexes) self:SetIgnoreIndexes(indexes) end
-function SaveManager:IgnoreThemeSettings() self:SetIgnoreIndexes({"LW_Theme","LW_Acrylic","LW_Transparent","LW_MenuKey"}) end
+function SaveManager:IgnoreThemeSettings()
+    local indexes={"LW_Theme","LW_CustomThemeName","LW_CustomThemeList","LW_Acrylic","LW_Transparent","LW_MenuKey"}
+    for _,field in ipairs({"Accent","Panel","Card","Rail","Control","Text","Muted","Dark","White"}) do table.insert(indexes,"LW_Color_"..field) end
+    self:SetIgnoreIndexes(indexes)
+end
 
 function SaveManager:Gather()
     local output={}
