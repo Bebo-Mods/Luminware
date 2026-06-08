@@ -1,208 +1,96 @@
---[[
-    LUMINWARE — SaveManager v2.0
-    Standalone config save/load system.
-
-    USAGE:
-        SaveManager:SetLibrary(Library)
-        SaveManager:SetFolder("Luminware/configs")
-        SaveManager:BuildSection(settingsTab)
-        SaveManager:LoadAutoload()
-]]
-
-local SaveManager = { Library = nil, Folder = "Luminware/configs", Ignore = {} }
-
-local HttpService = game:GetService("HttpService")
-local hasFS = (typeof(writefile)=="function") and (typeof(readfile)=="function")
+local SM={Library=nil,Folder="Luminware/configs",Ignore={}}
+local HS=game:GetService("HttpService")
+local hasFS=(typeof(writefile)=="function") and (typeof(readfile)=="function")
     and (typeof(isfile)=="function") and (typeof(listfiles)=="function")
-local _mem = {}
-
-local function ensureFolder(f)
-    if not hasFS then return end
-    pcall(function()
-        if typeof(makefolder)=="function" and typeof(isfolder)=="function" and not isfolder(f) then
-            makefolder(f)
-        end
-    end)
+local _mem={}
+local function mkf(f) if not hasFS then return end
+    pcall(function() if typeof(makefolder)=="function" and typeof(isfolder)=="function" and not isfolder(f) then makefolder(f) end end) end
+function SM:SetLibrary(l) self.Library=l end
+function SM:SetFolder(f) self.Folder=f; mkf(f) end
+function SM:SetIgnore(list) for _,k in next,list do self.Ignore[k]=true end end
+function SM:IgnoreThemeSettings() self:SetIgnore({"LW_Theme","LW_Accent","LW_Glow"}) end
+local function gT(sm) return (sm.Library and sm.Library.Toggles) or (typeof(getgenv)=="function" and getgenv().Toggles) or {} end
+local function gO(sm) return (sm.Library and sm.Library.Options)  or (typeof(getgenv)=="function" and getgenv().Options)  or {} end
+local function path(sm,n) return sm.Folder.."/"..n..".json" end
+function SM:Gather()
+    local d={t={},o={}}
+    for i,t in next,gT(self) do if not self.Ignore[i] then d.t[i]=t.Value end end
+    for i,o in next,gO(self) do if not self.Ignore[i] then
+        if o.Type=="Toggle" then d.o[i]={k="b",v=o.Value}
+        elseif o.Type=="Slider" then d.o[i]={k="n",v=o.Value}
+        elseif o.Type=="Input" or o.Type=="Dropdown" then d.o[i]={k="s",v=o.Value}
+        elseif o.Type=="KeyPicker" then d.o[i]={k="kp",key=o.Value,mode=o.Mode}
+        elseif o.Type=="ColorPicker" then d.o[i]={k="c",hex=o.Value:ToHex(),t=o.Transparency or 0} end
+    end end
+    return d
 end
-
-function SaveManager:SetLibrary(lib) self.Library = lib end
-function SaveManager:SetFolder(f) self.Folder = f; ensureFolder(f) end
-function SaveManager:SetIgnore(list) for _,k in next,list do self.Ignore[k]=true end end
-function SaveManager:IgnoreThemeSettings()
-    self:SetIgnore({"LW_Theme","LW_Accent","LW_Glow"})
+function SM:Apply(data)
+    for i,v in next,(data.t or {}) do local t=gT(self)[i]; if t then pcall(function()t:SetValue(v)end) end end
+    for i,e in next,(data.o or {}) do local o=gO(self)[i]; if o then pcall(function()
+        if e.k=="c" then local ok,c=pcall(Color3.fromHex,e.hex); if ok and o.SetValueRGB then o:SetValueRGB(c,e.t or 0) end
+        elseif e.k=="kp" then if o.SetValue then o:SetValue({e.key,e.mode}) end
+        else if o.SetValue then o:SetValue(e.v) end end
+    end) end end
 end
-
-local function cfgPath(self, name) return self.Folder.."/"..name..".json" end
-
-local function getToggles(self)
-    local L = self.Library
-    return (L and L.Toggles) or (typeof(getgenv)=="function" and getgenv().Toggles) or {}
+function SM:Save(n)
+    if not n or n=="" then return false,"no name" end
+    local ok,j=pcall(HS.JSONEncode,HS,self:Gather()); if not ok then return false,"encode" end
+    if hasFS then pcall(writefile,path(self,n),j) else _mem[n]=j end; return true
 end
-local function getOptions(self)
-    local L = self.Library
-    return (L and L.Options) or (typeof(getgenv)=="function" and getgenv().Options) or {}
+function SM:Load(n)
+    if not n or n=="" then return false,"no name" end
+    local c; if hasFS then if not isfile(path(self,n)) then return false,"not found" end
+        local ok,s=pcall(readfile,path(self,n)); if not ok then return false,"read" end; c=s
+    else c=_mem[n] end
+    if not c then return false,"not found" end
+    local ok,d=pcall(HS.JSONDecode,HS,c); if not ok then return false,"decode" end
+    self:Apply(d); return true
 end
-
-function SaveManager:Gather()
-    local data = { toggles={}, options={} }
-    for idx, t in next, getToggles(self) do
-        if not self.Ignore[idx] then data.toggles[idx] = t.Value end
-    end
-    for idx, o in next, getOptions(self) do
-        if not self.Ignore[idx] then
-            if o.Type == "Toggle"      then data.options[idx] = { kind="bool",   val=o.Value }
-            elseif o.Type == "Slider"  then data.options[idx] = { kind="num",    val=o.Value }
-            elseif o.Type == "Input"   then data.options[idx] = { kind="str",    val=o.Value }
-            elseif o.Type == "Dropdown" then data.options[idx] = { kind="str",    val=o.Value }
-            elseif o.Type == "KeyPicker" then data.options[idx] = { kind="key",  key=o.Value, mode=o.Mode }
-            elseif o.Type == "ColorPicker" then
-                data.options[idx] = { kind="color", hex=o.Value:ToHex(), t=o.Transparency or 0 }
-            end
-        end
-    end
-    return data
+function SM:Delete(n)
+    if hasFS and typeof(delfile)=="function" then pcall(delfile,path(self,n)) else _mem[n]=nil end; return true
 end
-
-function SaveManager:Apply(data)
-    for idx, v in next, (data.toggles or {}) do
-        local t = getToggles(self)[idx]
-        if t then pcall(function() t:SetValue(v) end) end
-    end
-    for idx, entry in next, (data.options or {}) do
-        local o = getOptions(self)[idx]
-        if o then
-            pcall(function()
-                if entry.kind == "color" then
-                    local ok,col = pcall(Color3.fromHex, entry.hex)
-                    if ok and o.SetValueRGB then o:SetValueRGB(col, entry.t or 0) end
-                elseif entry.kind == "key" then
-                    if o.SetValue then o:SetValue({entry.key, entry.mode}) end
-                else
-                    if o.SetValue then o:SetValue(entry.val) end
-                end
-            end)
-        end
-    end
-end
-
-function SaveManager:Save(name)
-    if not name or name=="" then return false,"no name" end
-    local ok, json = pcall(HttpService.JSONEncode, HttpService, self:Gather())
-    if not ok then return false,"encode error" end
-    if hasFS then pcall(writefile, cfgPath(self,name), json)
-    else _mem[name] = json end
-    return true
-end
-
-function SaveManager:Load(name)
-    if not name or name=="" then return false,"no name" end
-    local contents
-    if hasFS then
-        if not isfile(cfgPath(self,name)) then return false,"not found" end
-        local ok,c = pcall(readfile, cfgPath(self,name))
-        if not ok then return false,"read error" end
-        contents = c
-    else contents = _mem[name] end
-    if not contents then return false,"not found" end
-    local ok,data = pcall(HttpService.JSONDecode, HttpService, contents)
-    if not ok then return false,"decode error" end
-    self:Apply(data)
-    return true
-end
-
-function SaveManager:Delete(name)
-    if hasFS and typeof(delfile)=="function" then pcall(delfile, cfgPath(self,name))
-    else _mem[name] = nil end
-    return true
-end
-
-function SaveManager:List()
-    local out = {}
-    if hasFS then
-        local ok,files = pcall(listfiles, self.Folder)
-        if ok and files then
-            for _,f in next,files do
-                local n = tostring(f):match("([^/\\]+)%.json$")
-                if n and n~="_autoload" then table.insert(out,n) end
-            end
-        end
-    else for k in next,_mem do if k~="_autoload" then table.insert(out,k) end end end
+function SM:List()
+    local out={}
+    if hasFS then local ok,f=pcall(listfiles,self.Folder); if ok and f then for _,x in next,f do
+        local nm=tostring(x):match("([^/\\]+)%.json$"); if nm and nm~="_autoload" then table.insert(out,nm) end
+    end end else for k in next,_mem do if k~="_autoload" then table.insert(out,k) end end end
     return out
 end
-
-function SaveManager:SetAutoload(name)
-    if hasFS then pcall(writefile, self.Folder.."/_autoload.txt", name)
-    else _mem["_autoload"] = name end
-end
-
-function SaveManager:GetAutoload()
+function SM:SetAutoload(n) if hasFS then pcall(writefile,self.Folder.."/_autoload.txt",n) else _mem["_autoload"]=n end end
+function SM:GetAutoload()
     if hasFS and typeof(isfile)=="function" and isfile(self.Folder.."/_autoload.txt") then
-        local ok,c = pcall(readfile, self.Folder.."/_autoload.txt")
-        if ok then return c end
-    end
+        local ok,c=pcall(readfile,self.Folder.."/_autoload.txt"); if ok then return c end end
     return _mem["_autoload"]
 end
-
-function SaveManager:LoadAutoload()
-    local name = self:GetAutoload()
-    if name then
-        local ok,err = self:Load(name)
-        if self.Library then
-            if ok then self.Library:Notify({ Title="Config loaded", Body=name, Duration=3 })
-            else self.Library:Notify({ Title="Autoload failed", Body=tostring(err), Duration=3 }) end
-        end
-    end
+function SM:LoadAutoload()
+    local n=self:GetAutoload(); if not n then return end
+    local ok,err=self:Load(n); local L=self.Library
+    if L then if ok then L:Notify({Title="Config loaded",Content=n,Duration=3})
+    else L:Notify({Title="Autoload failed",Content=tostring(err),Duration=3}) end end
 end
-
-function SaveManager:BuildSection(tab)
-    assert(self.Library, "Call SaveManager:SetLibrary first")
-    local L = self.Library
-    local sec = tab:AddSection("Configuration")
-
-    local nameInput = sec:AddInput("LW_CfgName", {
-        Label = "Config Name", Placeholder = "my_config", Finished = true,
-    })
-
-    local listDD = sec:AddDropdown("LW_CfgList", {
-        Label = "Saved Configs", Values = self:List(), Default = nil,
-    })
-    if listDD and not listDD.Value and #(self:List()) > 0 then
-        listDD:SetValue(self:List()[1])
-    end
-
-    sec:AddButton({ Label = "Save Config",   Action = "Save",    Callback = function()
-        local ok, err = self:Save(nameInput.Value)
-        if ok then L:Notify({ Title="Saved", Body=nameInput.Value, Duration=3 })
-        else L:Notify({ Title="Save failed", Body=tostring(err), Duration=3 }) end
-        if listDD then listDD:SetValues(self:List()) end
-    end })
-
-    sec:AddButton({ Label = "Load Config",   Action = "Load",    Callback = function()
-        local ok, err = self:Load(listDD and listDD.Value)
-        if ok then L:Notify({ Title="Loaded", Body=tostring(listDD and listDD.Value), Duration=3 })
-        else L:Notify({ Title="Load failed", Body=tostring(err), Duration=3 }) end
-    end })
-
-    sec:AddButton({ Label = "Set Autoload",  Action = "Set",     Callback = function()
-        if listDD and listDD.Value then
-            self:SetAutoload(listDD.Value)
-            L:Notify({ Title="Autoload set", Body=listDD.Value, Duration=3 })
-        end
-    end })
-
-    sec:AddButton({ Label = "Refresh List",  Action = "Refresh", Callback = function()
-        if listDD then listDD:SetValues(self:List()) end
-    end })
-
-    sec:AddButton({ Label = "Delete Config", Action = "Delete",  Callback = function()
-        if listDD and listDD.Value then
-            self:Delete(listDD.Value)
+function SM:BuildSection(subtab)
+    local L=self.Library; assert(L,"SetLibrary first")
+    local card=subtab.Left:AddCard("Configuration")
+    local nameIn=card:AddInput("LW_CfgName",{Label="Config Name",Placeholder="my_config",Finished=true})
+    local listDD=card:AddDropdown("LW_CfgList",{Label="Saved Configs",Values=self:List(),Default=nil})
+    card:AddButton({Label="Save Config",  Action="Save",    Callback=function()
+        local ok,err=self:Save(nameIn.Value)
+        if ok then L:Notify({Title="Saved",Content=nameIn.Value,Duration=3})
+        else L:Notify({Title="Save failed",Content=tostring(err),Duration=3}) end
+        if listDD then listDD:SetValues(self:List()) end end})
+    card:AddButton({Label="Load Config",  Action="Load",    Callback=function()
+        local ok,err=self:Load(listDD and listDD.Value)
+        if ok then L:Notify({Title="Loaded",Content=tostring(listDD and listDD.Value),Duration=3})
+        else L:Notify({Title="Load failed",Content=tostring(err),Duration=3}) end end})
+    card:AddButton({Label="Set Autoload", Action="Set",     Callback=function()
+        if listDD and listDD.Value then self:SetAutoload(listDD.Value)
+            L:Notify({Title="Autoload set",Content=listDD.Value,Duration=3}) end end})
+    card:AddButton({Label="Refresh List", Action="Refresh", Callback=function()
+        if listDD then listDD:SetValues(self:List()) end end})
+    card:AddButton({Label="Delete",       Action="Delete",  Callback=function()
+        if listDD and listDD.Value then self:Delete(listDD.Value)
             if listDD then listDD:SetValues(self:List()) end
-            L:Notify({ Title="Deleted", Body=tostring(listDD and listDD.Value), Duration=3 })
-        end
-    end })
-
-    return sec
+            L:Notify({Title="Deleted",Content=tostring(listDD and listDD.Value),Duration=3}) end end})
+    return card
 end
-
-return SaveManager
+return SM
