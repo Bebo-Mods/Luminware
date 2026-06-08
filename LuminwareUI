@@ -2613,7 +2613,7 @@ function Phantom:CreateWindow(Config)
         end
 
         task.wait(FadeTime)
-        Outer.Visible = Toggled
+        Outer.Visible = Toggled 
         Fading        = false
     end
 
