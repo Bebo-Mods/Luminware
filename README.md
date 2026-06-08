@@ -18,6 +18,7 @@ Luminware is a reusable Roblox UI library with Fluent-style presentation, Linori
 - Linoria-style left/right groupboxes, tabboxes, labels, dividers, chained buttons, and dependency boxes
 - Toggles, sliders, single/multi dropdowns, inputs, keybinds, and full HSV color pickers
 - Dialogs, notifications, watermark, themes, acrylic, configs, autoload, and interface settings
+- Animated loading screen, window entrance, and interactive control transitions
 - `Library.Options`, `Library.Toggles`, `OnChanged`, `OnClick`, `SetValue`, `SetVisible`, and `SetDisabled`
 
 ## Load

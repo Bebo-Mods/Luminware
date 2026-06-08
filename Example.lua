@@ -4,6 +4,12 @@ local SaveManager=loadstring(game:HttpGet(base.."addons/SaveManager.lua"))()
 local ThemeManager=loadstring(game:HttpGet(base.."addons/ThemeManager.lua"))()
 local InterfaceManager=loadstring(game:HttpGet(base.."addons/InterfaceManager.lua"))()
 
+local Loader=Library:CreateLoader({Title="Luminware",Subtitle="Preparing concept interface"})
+Loader:SetProgress(0.28,"Loading components")
+task.wait(0.18)
+Loader:SetProgress(0.68,"Applying theme and settings")
+task.wait(0.18)
+
 local Window=Library:CreateWindow({
     Size=UDim2.fromOffset(900,600),
     Acrylic=true,
@@ -135,4 +141,5 @@ InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 Window:SelectTab(1)
 Library:SetWatermark("Luminware "..Library.Version)
 Library:SetWatermarkVisibility(true)
+Loader:Complete("Interface ready")
 Library:Notify({Title="Luminware",Content="Complete concept library loaded",Duration=5})

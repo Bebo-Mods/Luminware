@@ -191,6 +191,49 @@ function L:Notify(info)
     task.delay(info.Duration or 4,function() tween(box,{BackgroundTransparency=1},0.2);task.wait(0.25);unbind(box);box:Destroy() end)
 end
 
+function L:CreateLoader(info)
+    info=type(info)=="string" and {Title=info} or info or {}
+    local overlay=new("CanvasGroup",{Active=true,Size=UDim2.fromScale(1,1),BackgroundColor3=self.Colors.Dark,BackgroundTransparency=0.12,
+        GroupTransparency=1,ZIndex=400},Screen)
+    local card=bind(new("CanvasGroup",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.new(0.5,0,0.5,12),Size=UDim2.fromOffset(390,164),
+        BackgroundColor3=self.Colors.Panel,BackgroundTransparency=0.04,GroupTransparency=1,ZIndex=401},overlay),{BackgroundColor3="Panel"})
+    corner(card,22);stroke(card,0.72)
+    local mark=bind(new("Frame",{Position=UDim2.fromOffset(22,22),Size=UDim2.fromOffset(5,42),BackgroundColor3=self.Colors.Accent,ZIndex=402},card),{BackgroundColor3="Accent"});corner(mark,3)
+    local title=text(card,info.Title or "Luminware",16,self.Colors.Text,true);title.Position=UDim2.fromOffset(42,20);title.Size=UDim2.new(1,-64,0,24);title.ZIndex=402
+    local subtitle=text(card,info.Subtitle or "Initializing interface",10,self.Colors.Muted);subtitle.Position=UDim2.fromOffset(42,44);subtitle.Size=UDim2.new(1,-64,0,20);subtitle.ZIndex=402
+    local status=text(card,info.Status or "Starting",10,self.Colors.Muted);status.Position=UDim2.fromOffset(22,86);status.Size=UDim2.new(1,-74,0,18);status.ZIndex=402
+    local percent=text(card,"0%",10,self.Colors.Text,true);percent.AnchorPoint=Vector2.new(1,0);percent.Position=UDim2.new(1,-22,0,86);percent.Size=UDim2.fromOffset(42,18);percent.TextXAlignment=Enum.TextXAlignment.Right;percent.ZIndex=402
+    local track=bind(new("Frame",{Position=UDim2.fromOffset(22,116),Size=UDim2.new(1,-44,0,5),BackgroundColor3=self.Colors.Control,BackgroundTransparency=0.15,ZIndex=402},card),{BackgroundColor3="Control"});corner(track,3)
+    local fill=bind(new("Frame",{Size=UDim2.fromScale(0,1),BackgroundColor3=self.Colors.Accent,ZIndex=403},track),{BackgroundColor3="Accent"});corner(fill,3)
+    local api={Root=overlay,Value=0}
+    function api:SetProgress(value,newStatus)
+        self.Value=math.clamp(tonumber(value) or 0,0,1)
+        if newStatus then status.Text=tostring(newStatus) end
+        percent.Text=("%d%%"):format(math.floor(self.Value*100+0.5))
+        tween(fill,{Size=UDim2.fromScale(self.Value,1)},0.32)
+    end
+    function api:SetStatus(value) status.Text=tostring(value) end
+    function api:Complete(finalStatus)
+        if not overlay.Parent then return end
+        self:SetProgress(1,finalStatus or "Ready")
+        task.delay(0.28,function()
+            if not overlay.Parent then return end
+            tween(card,{Position=UDim2.new(0.5,0,0.5,-8),GroupTransparency=1},0.28)
+            tween(overlay,{GroupTransparency=1},0.32)
+            task.wait(0.36);overlay:Destroy()
+        end)
+    end
+    tween(overlay,{GroupTransparency=0},0.25)
+    tween(card,{Position=UDim2.fromScale(0.5,0.5),GroupTransparency=0},0.4)
+    task.spawn(function()
+        while overlay.Parent do
+            tween(mark,{BackgroundTransparency=0.48},0.7);task.wait(0.7)
+            tween(mark,{BackgroundTransparency=0},0.7);task.wait(0.7)
+        end
+    end)
+    return api
+end
+
 local function makeToggle(parent,initial,changed)
     local state=not not initial
     local track=new("TextButton",{AutoButtonColor=false,Text="",BackgroundColor3=state and L.Colors.Accent or L.Colors.Control,
@@ -297,24 +340,42 @@ local function createCard(column,title,window)
     function api:AddSlider(index,info)
         info=info or {};local min,max=info.Min or 0,info.Max or 100
         local option={Value=info.Default or min,Min=min,Max=max,Type="Slider"}
-        local r=row(45);rowTitle(r,info)
+        local r=row(52);local title=rowTitle(r,info);title.Size=UDim2.new(1,-62,0,20)
         finishOption(option,r)
-        local value=text(r,"",10,L.Colors.Muted);value.AnchorPoint=Vector2.new(1,0);value.Position=UDim2.new(1,0,0,0);value.Size=UDim2.fromOffset(44,18);value.TextXAlignment=Enum.TextXAlignment.Right
-        local track=bind(new("Frame",{AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,0,0,25),Size=UDim2.new(0.58,0,0,9),BackgroundColor3=L.Colors.Control},r),{BackgroundColor3="Control"});corner(track,5)
-        local fill=bind(new("Frame",{BackgroundColor3=L.Colors.Accent,Size=UDim2.fromScale(0,1)},track),{BackgroundColor3="Accent"});corner(fill,5)
-        local knob=bind(new("Frame",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0,0.5),Size=UDim2.fromOffset(14,14),BackgroundColor3=L.Colors.Text},track),{BackgroundColor3="Text"});corner(knob,7)
-        function option:SetValue(v)
+        local badge=bind(new("Frame",{AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,0,0,0),Size=UDim2.fromOffset(50,20),
+            BackgroundColor3=L.Colors.Dark,BackgroundTransparency=0.34},r),{BackgroundColor3="Dark"});corner(badge,8);stroke(badge,0.88)
+        local value=text(badge,"",9,L.Colors.Muted,true);value.Size=UDim2.fromScale(1,1);value.TextXAlignment=Enum.TextXAlignment.Center
+        local track=bind(new("Frame",{AnchorPoint=Vector2.new(0,0.5),Position=UDim2.new(0,0,0,38),Size=UDim2.new(1,0,0,5),
+            BackgroundColor3=L.Colors.Control,BackgroundTransparency=0.18},r),{BackgroundColor3="Control"});corner(track,3)
+        local fill=bind(new("Frame",{BackgroundColor3=L.Colors.Accent,Size=UDim2.fromScale(0,1)},track),{BackgroundColor3="Accent"});corner(fill,3)
+        local knob=bind(new("Frame",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0,0.5),Size=UDim2.fromOffset(11,11),
+            BackgroundColor3=L.Colors.Text},track),{BackgroundColor3="Text"});corner(knob,6);stroke(knob,0.82)
+        local hit=new("TextButton",{AutoButtonColor=false,Text="",BackgroundTransparency=1,AnchorPoint=Vector2.new(0,0.5),
+            Position=UDim2.new(0,0,0.5,0),Size=UDim2.new(1,0,0,24),ZIndex=2},track)
+        function option:SetValue(v,immediate)
             local n=math.clamp(tonumber(v) or min,min,max)
             local rounding=info.Rounding or 0;n=tonumber(string.format("%."..rounding.."f",n))
-            self.Value=n;local p=(n-min)/(max-min);fill.Size=UDim2.fromScale(p,1);knob.Position=UDim2.fromScale(p,0.5);value.Text=tostring(n)..(info.Suffix or "")
+            self.Value=n;local p=max==min and 0 or (n-min)/(max-min)
+            if immediate then fill.Size=UDim2.fromScale(p,1);knob.Position=UDim2.fromScale(p,0.5)
+            else tween(fill,{Size=UDim2.fromScale(p,1)},0.16);tween(knob,{Position=UDim2.fromScale(p,0.5)},0.16) end
+            value.Text=tostring(n)..(info.Suffix or "")
             callback(info.Callback,n);callback(self.Changed,n)
         end
         function option:OnChanged(fn) self.Changed=fn;fn(self.Value) end
         function option:RefreshTheme() end
         local down=false
-        track.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then down=true end end)
-        register(UIS.InputChanged:Connect(function(i) if down and i.UserInputType==Enum.UserInputType.MouseMovement then option:SetValue(min+math.clamp((Mouse.X-track.AbsolutePosition.X)/track.AbsoluteSize.X,0,1)*(max-min)) end end))
-        register(UIS.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then down=false end end))
+        local function setFromX(x) option:SetValue(min+math.clamp((x-track.AbsolutePosition.X)/track.AbsoluteSize.X,0,1)*(max-min),true) end
+        hit.MouseEnter:Connect(function() if not down then tween(knob,{Size=UDim2.fromOffset(13,13)},0.14) end end)
+        hit.MouseLeave:Connect(function() if not down then tween(knob,{Size=UDim2.fromOffset(11,11)},0.14) end end)
+        hit.InputBegan:Connect(function(i)
+            if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
+                down=true;tween(knob,{Size=UDim2.fromOffset(15,15)},0.12);setFromX(i.UserInputType==Enum.UserInputType.Touch and i.Position.X or Mouse.X)
+            end
+        end)
+        register(UIS.InputChanged:Connect(function(i)
+            if down and (i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch) then setFromX(i.UserInputType==Enum.UserInputType.Touch and i.Position.X or Mouse.X) end
+        end))
+        register(UIS.InputEnded:Connect(function(i) if down and (i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch) then down=false;tween(knob,{Size=UDim2.fromOffset(11,11)},0.14) end end))
         option:SetValue(option.Value);L.Options[index]=option;return option
     end
     function api:AddDropdown(index,info)
@@ -487,8 +548,8 @@ function L:CreateWindow(config)
     config=config or {};local width=config.Size and config.Size.X.Offset or 900;local height=config.Size and config.Size.Y.Offset or 600
     local window={Tabs={},TabOrder={}}
     local root=new("Frame",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.5),Size=UDim2.fromOffset(width,height),BackgroundTransparency=1},Screen)
-    local scale=new("UIScale",{Scale=1},root)
-    local panel=bind(new("Frame",{Size=UDim2.fromScale(1,1),BackgroundColor3=self.Colors.Panel,BackgroundTransparency=0.17,ClipsDescendants=true},root),{BackgroundColor3="Panel"});corner(panel,28);stroke(panel,0.78)
+    local scale=new("UIScale",{Scale=0.965},root)
+    local panel=bind(new("Frame",{Size=UDim2.fromScale(1,1),BackgroundColor3=self.Colors.Panel,BackgroundTransparency=1,ClipsDescendants=true},root),{BackgroundColor3="Panel"});corner(panel,28);stroke(panel,0.78)
     local rail=bind(new("Frame",{Position=UDim2.fromOffset(14,14),Size=UDim2.new(0,72,1,-28),BackgroundColor3=self.Colors.Rail,BackgroundTransparency=0.28},panel),{BackgroundColor3="Rail"});corner(rail,22);stroke(rail,0.8)
     local nav=new("Frame",{Position=UDim2.fromOffset(10,12),Size=UDim2.new(1,-20,1,-70),BackgroundTransparency=1},rail)
     new("UIListLayout",{Padding=UDim.new(0,8),HorizontalAlignment=Enum.HorizontalAlignment.Center,SortOrder=Enum.SortOrder.LayoutOrder},nav)
@@ -509,7 +570,8 @@ function L:CreateWindow(config)
     local function resize()
         local v=workspace.CurrentCamera.ViewportSize;scale.Scale=math.min(1,v.X/(width+50),v.Y/(height+50))
     end
-    resize();register(workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(resize))
+    resize();local finalScale=scale.Scale;scale.Scale=finalScale*0.965;tween(scale,{Scale=finalScale},0.38);tween(panel,{BackgroundTransparency=0.17},0.32)
+    register(workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(resize))
     power.Activated:Connect(function() self:Unload() end)
     search:GetPropertyChangedSignal("Text"):Connect(function()
         local q=search.Text:lower()
