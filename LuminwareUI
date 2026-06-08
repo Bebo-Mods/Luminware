@@ -895,8 +895,8 @@ function BaseGroupbox:AddButton(Info)
         DoubleClick = Info.DoubleClick
         Tooltip     = Info.Tooltip
     else
-        Text = Info
-        Func = select(1, ...)
+        Text = tostring(Info)
+        Func = function() end -- fallback: pass a table with Text+Func instead
     end
     assert(type(Func) == "function", "AddButton: Missing `Func` callback.")
 
@@ -2613,7 +2613,7 @@ function Phantom:CreateWindow(Config)
         end
 
         task.wait(FadeTime)
-        Outer.Visible = Toggled 
+        Outer.Visible = Toggled
         Fading        = false
     end
 
