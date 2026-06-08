@@ -30,6 +30,8 @@ local L={
     Windows={},
     Registry={},
     Popups={},
+    PopupClosers={},
+    PopupTriggers={},
     OnUnloadCallbacks={},
     Unloaded=false,
     Theme="Concept",
@@ -65,12 +67,17 @@ end
 local function unbind(object) L.Registry[object]=nil end
 local function closePopups(except)
     for popup,owner in next,L.Popups do
-        if popup~=except and popup.Parent then popup.Visible=false end
+        if popup~=except and popup.Parent then
+            local closer=L.PopupClosers[popup]
+            if closer then closer() else popup.Visible=false end
+        end
     end
 end
-local function ownPopup(popup,window)
+local function ownPopup(popup,window,closer,trigger)
     L.Popups[popup]=window
-    popup.Destroying:Connect(function() L.Popups[popup]=nil end)
+    L.PopupClosers[popup]=closer
+    L.PopupTriggers[popup]=trigger
+    popup.Destroying:Connect(function() L.Popups[popup]=nil;L.PopupClosers[popup]=nil;L.PopupTriggers[popup]=nil end)
     return popup
 end
 
@@ -144,6 +151,11 @@ register(UIS.InputBegan:Connect(function(input)
             if popup.Visible then
                 local p,s=popup.AbsolutePosition,popup.AbsoluteSize
                 if point.X>=p.X and point.X<=p.X+s.X and point.Y>=p.Y and point.Y<=p.Y+s.Y then return end
+                local trigger=L.PopupTriggers[popup]
+                if trigger and trigger.Parent then
+                    local tp,ts=trigger.AbsolutePosition,trigger.AbsoluteSize
+                    if point.X>=tp.X and point.X<=tp.X+ts.X and point.Y>=tp.Y and point.Y<=tp.Y+ts.Y then return end
+                end
             end
         end
         closePopups()
@@ -315,10 +327,15 @@ local function createCard(column,title,window)
         local box=bind(new("TextButton",{AutoButtonColor=false,Position=UDim2.fromOffset(0,25),Size=UDim2.new(1,0,0,31),
             BackgroundColor3=L.Colors.Control,BackgroundTransparency=0.27,Font=Enum.Font.Gotham,Text="",TextColor3=L.Colors.Text,TextSize=11,TextXAlignment=Enum.TextXAlignment.Left},r),{BackgroundColor3="Control",TextColor3="Text"});corner(box,12);stroke(box,0.8);pad(box,11,11)
         finishOption(option,r)
-        local pop=ownPopup(bind(new("ScrollingFrame",{Visible=false,BackgroundColor3=L.Colors.Card,BackgroundTransparency=0.08,
-            Size=UDim2.fromOffset(180,0),CanvasSize=UDim2.fromOffset(0,0),AutomaticCanvasSize=Enum.AutomaticSize.Y,
-            ScrollBarThickness=2,ScrollBarImageColor3=L.Colors.Accent,BorderSizePixel=0,ZIndex=200},Screen),{BackgroundColor3="Card",ScrollBarImageColor3="Accent"}),window);corner(pop,12);stroke(pop,0.7);pad(pop,5,5,5,5)
+        local pop=bind(new("ScrollingFrame",{Visible=false,Position=UDim2.fromOffset(0,62),BackgroundColor3=L.Colors.Card,BackgroundTransparency=0.08,
+            Size=UDim2.new(1,0,0,0),CanvasSize=UDim2.fromOffset(0,0),AutomaticCanvasSize=Enum.AutomaticSize.Y,
+            ScrollBarThickness=2,ScrollBarImageColor3=L.Colors.Accent,BorderSizePixel=0,ZIndex=2},r),{BackgroundColor3="Card",ScrollBarImageColor3="Accent"});corner(pop,12);stroke(pop,0.7);pad(pop,5,5,5,5)
         local popLayout=new("UIListLayout",{Padding=UDim.new(0,3)},pop)
+        local function close()
+            pop.Visible=false
+            r.Size=UDim2.new(1,0,0,62)
+        end
+        ownPopup(pop,window,close,box)
         local function display()
             if not option.Multi then return tostring(option.Value or "Select") end
             local out={} for _,v in ipairs(option.Values) do if option.Value[v] then table.insert(out,tostring(v)) end end
@@ -333,7 +350,7 @@ local function createCard(column,title,window)
                     BackgroundTransparency=selected and 0 or 0.35,Size=UDim2.new(1,0,0,28),Font=Enum.Font.Gotham,Text=tostring(v),
                     TextColor3=selected and L.Colors.Dark or L.Colors.Text,TextSize=10,ZIndex=201},pop);corner(item,9)
                 item.Activated:Connect(function()
-                    if option.Multi then option.Value[v]=not option.Value[v] else option.Value=v;pop.Visible=false end
+                    if option.Multi then option.Value[v]=not option.Value[v] else option.Value=v;close() end
                     render();callback(info.Callback,option.Value);callback(option.Changed,option.Value)
                 end)
             end
@@ -344,12 +361,11 @@ local function createCard(column,title,window)
         function option:RefreshTheme() box.BackgroundColor3=L.Colors.Control;pop.BackgroundColor3=L.Colors.Card;render() end
         box.Activated:Connect(function()
             local opening=not pop.Visible;closePopups(pop)
-            local viewport=workspace.CurrentCamera.ViewportSize
-            local maxHeight=math.min(#option.Values*31+10,190)
-            local x=math.clamp(box.AbsolutePosition.X,8,math.max(8,viewport.X-box.AbsoluteSize.X-8))
-            local y=box.AbsolutePosition.Y+box.AbsoluteSize.Y+6
-            local height=math.min(maxHeight,math.max(42,viewport.Y-y-8))
-            pop.Position=UDim2.fromOffset(x,y);pop.Size=UDim2.fromOffset(box.AbsoluteSize.X,height);pop.Visible=opening
+            if opening then
+                local height=math.min(math.max(#option.Values*31+10,42),190)
+                pop.Size=UDim2.new(1,0,0,height);pop.Visible=true
+                r.Size=UDim2.new(1,0,0,68+height)
+            else close() end
         end)
         render();L.Options[index]=option;return option
     end
