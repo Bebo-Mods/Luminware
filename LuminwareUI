@@ -1,22 +1,4 @@
---[[
-    ██████╗ ██╗  ██╗ █████╗ ███╗   ██╗████████╗ ██████╗ ███╗   ███╗
-    ██╔══██╗██║  ██║██╔══██╗████╗  ██║╚══██╔══╝██╔═══██╗████╗ ████║
-    ██████╔╝███████║███████║██╔██╗ ██║   ██║   ██║   ██║██╔████╔██║
-    ██╔═══╝ ██╔══██║██╔══██║██║╚██╗██║   ██║   ██║   ██║██║╚██╔╝██║
-    ██║     ██║  ██║██║  ██║██║ ╚████║   ██║   ╚██████╔╝██║ ╚═╝ ██║
-    ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝   ╚═╝    ╚═════╝ ╚═╝     ╚═╝
-    UI Library v5.0 — Executor-runnable, no LocalScript required.
-    
-    USAGE:
-        local Phantom = loadstring(...)() -- or paste + run
-        local Window  = Phantom:CreateWindow({ Title = "PHANTOM", AutoShow = true })
-        local Tab     = Window:AddTab("AIM")
-        local Box     = Tab:AddLeftGroupbox("Targeting")
-        Box:AddToggle("MasterSwitch", { Text = "Master Switch", Default = true, Callback = function(v) end })
-        Box:AddSlider("Fov", { Text = "FOV", Min = 1, Max = 180, Default = 45, Rounding = 0 })
 
-    KEYBIND TO TOGGLE: RightShift or RightControl (same as reference library)
-]]
 
 -- ============================================================
 -- SERVICES
