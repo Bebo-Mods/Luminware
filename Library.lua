@@ -101,17 +101,26 @@ local function text(parent,value,size,color,bold)
 end
 local register
 local function drag(handle,target)
-    local active,start,pos=false
+    local active,dragInput,start,startCenter=false
     register(handle.InputBegan:Connect(function(i)
-        if i.UserInputType==Enum.UserInputType.MouseButton1 then active=true;start=i.Position;pos=target.Position end
-    end))
-    register(UIS.InputChanged:Connect(function(i)
-        if active and i.UserInputType==Enum.UserInputType.MouseMovement then
-            local d=i.Position-start
-            target.Position=UDim2.new(pos.X.Scale,pos.X.Offset+d.X,pos.Y.Scale,pos.Y.Offset+d.Y)
+        if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
+            active=true;dragInput=i;start=i.Position;startCenter=target.AbsolutePosition+(target.AbsoluteSize/2)
+            i.Changed:Connect(function() if i.UserInputState==Enum.UserInputState.End then active=false;dragInput=nil end end)
         end
     end))
-    register(UIS.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then active=false end end))
+    register(handle.InputChanged:Connect(function(i)
+        if i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch then dragInput=i end
+    end))
+    register(UIS.InputChanged:Connect(function(i)
+        if active and i==dragInput then
+            local d=i.Position-start
+            local viewport=workspace.CurrentCamera.ViewportSize
+            local x=math.clamp(startCenter.X+d.X,-target.AbsoluteSize.X/2+20,viewport.X+target.AbsoluteSize.X/2-20)
+            local y=math.clamp(startCenter.Y+d.Y,-target.AbsoluteSize.Y/2+20,viewport.Y+target.AbsoluteSize.Y/2-20)
+            target.Position=UDim2.fromOffset(x,y)
+        end
+    end))
+    register(UIS.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then active=false;dragInput=nil end end))
 end
 register=function(signal) table.insert(L.Signals,signal);return signal end
 
@@ -459,15 +468,16 @@ function L:CreateWindow(config)
     local power=bind(new("TextButton",{AnchorPoint=Vector2.new(0.5,1),Position=UDim2.new(0.5,0,1,-12),Size=UDim2.fromOffset(42,36),BackgroundTransparency=1,
         Font=Enum.Font.GothamMedium,Text="O",TextColor3=self.Colors.Text,TextSize=16},rail),{TextColor3="Text"})
     local content=new("Frame",{Position=UDim2.fromOffset(104,14),Size=UDim2.new(1,-118,1,-28),BackgroundTransparency=1},panel)
-    local header=new("Frame",{Size=UDim2.new(1,0,0,54),BackgroundTransparency=1},content);drag(header,root)
-    local subtabs=new("Frame",{Position=UDim2.fromOffset(0,4),Size=UDim2.new(1,-245,0,42),BackgroundTransparency=1},header)
+    local header=new("Frame",{Size=UDim2.new(1,0,0,54),BackgroundTransparency=1},content)
+    local dragSurface=new("TextButton",{AutoButtonColor=false,Text="",BackgroundTransparency=1,Size=UDim2.fromScale(1,1),ZIndex=1},header);drag(dragSurface,root)
+    local subtabs=new("Frame",{Position=UDim2.fromOffset(0,4),Size=UDim2.new(1,-245,0,42),BackgroundTransparency=1,ZIndex=2},header)
     local subLayout=new("UIListLayout",{FillDirection=Enum.FillDirection.Horizontal,Padding=UDim.new(0,8),SortOrder=Enum.SortOrder.LayoutOrder},subtabs)
     local search=bind(new("TextBox",{AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,-68,0,5),Size=UDim2.fromOffset(170,35),BackgroundColor3=self.Colors.Dark,BackgroundTransparency=0.5,
-        ClearTextOnFocus=false,Font=Enum.Font.Gotham,PlaceholderText="Q  Search",PlaceholderColor3=self.Colors.Muted,Text="",TextColor3=self.Colors.Text,TextSize=11,TextXAlignment=Enum.TextXAlignment.Left},header),{BackgroundColor3="Dark",PlaceholderColor3="Muted",TextColor3="Text"});corner(search,16);pad(search,13,8)
+        ClearTextOnFocus=false,Font=Enum.Font.Gotham,PlaceholderText="Q  Search",PlaceholderColor3=self.Colors.Muted,Text="",TextColor3=self.Colors.Text,TextSize=11,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=2},header),{BackgroundColor3="Dark",PlaceholderColor3="Muted",TextColor3="Text"});corner(search,16);pad(search,13,8)
     local initial=(Player.DisplayName~="" and Player.DisplayName or Player.Name):sub(1,1):upper()
-    local initialLabel=text(header,initial,12,self.Colors.Text,true);initialLabel.AnchorPoint=Vector2.new(1,0);initialLabel.Position=UDim2.new(1,-38,0,5);initialLabel.Size=UDim2.fromOffset(25,35);initialLabel.TextXAlignment=Enum.TextXAlignment.Center
+    local initialLabel=text(header,initial,12,self.Colors.Text,true);initialLabel.AnchorPoint=Vector2.new(1,0);initialLabel.Position=UDim2.new(1,-38,0,5);initialLabel.Size=UDim2.fromOffset(25,35);initialLabel.TextXAlignment=Enum.TextXAlignment.Center;initialLabel.ZIndex=2
     local avatar=new("ImageLabel",{AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,0,0,6),Size=UDim2.fromOffset(32,32),BackgroundColor3=self.Colors.White,
-        Image=("rbxthumb://type=AvatarHeadShot&id=%d&w=150&h=150"):format(Player.UserId)},header);corner(avatar,16);stroke(avatar,0.25)
+        Image=("rbxthumb://type=AvatarHeadShot&id=%d&w=150&h=150"):format(Player.UserId),ZIndex=2},header);corner(avatar,16);stroke(avatar,0.25)
     local pages=new("Frame",{Position=UDim2.fromOffset(0,56),Size=UDim2.new(1,0,1,-56),BackgroundTransparency=1,ClipsDescendants=true},content)
     local function resize()
         local v=workspace.CurrentCamera.ViewportSize;scale.Scale=math.min(1,v.X/(width+50),v.Y/(height+50))
