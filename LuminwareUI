@@ -1,0 +1,2676 @@
+--[[
+    ██████╗ ██╗  ██╗ █████╗ ███╗   ██╗████████╗ ██████╗ ███╗   ███╗
+    ██╔══██╗██║  ██║██╔══██╗████╗  ██║╚══██╔══╝██╔═══██╗████╗ ████║
+    ██████╔╝███████║███████║██╔██╗ ██║   ██║   ██║   ██║██╔████╔██║
+    ██╔═══╝ ██╔══██║██╔══██║██║╚██╗██║   ██║   ██║   ██║██║╚██╔╝██║
+    ██║     ██║  ██║██║  ██║██║ ╚████║   ██║   ╚██████╔╝██║ ╚═╝ ██║
+    ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝   ╚═╝    ╚═════╝ ╚═╝     ╚═╝
+    UI Library v5.0 — Executor-runnable, no LocalScript required.
+    
+    USAGE:
+        local Phantom = loadstring(...)() -- or paste + run
+        local Window  = Phantom:CreateWindow({ Title = "PHANTOM", AutoShow = true })
+        local Tab     = Window:AddTab("AIM")
+        local Box     = Tab:AddLeftGroupbox("Targeting")
+        Box:AddToggle("MasterSwitch", { Text = "Master Switch", Default = true, Callback = function(v) end })
+        Box:AddSlider("Fov", { Text = "FOV", Min = 1, Max = 180, Default = 45, Rounding = 0 })
+
+    KEYBIND TO TOGGLE: RightShift or RightControl (same as reference library)
+]]
+
+-- ============================================================
+-- SERVICES
+-- ============================================================
+local InputService  = game:GetService("UserInputService")
+local TextService   = game:GetService("TextService")
+local TweenService  = game:GetService("TweenService")
+local RunService    = game:GetService("RunService")
+local Players       = game:GetService("Players")
+local CoreGui       = game:GetService("CoreGui")
+
+local RenderStepped = RunService.RenderStepped
+local LocalPlayer   = Players.LocalPlayer
+local Mouse         = LocalPlayer:GetMouse()
+
+-- ============================================================
+-- GUI PROTECTION
+-- ============================================================
+local ProtectGui = (syn and syn.protect_gui)
+    or (typeof(protectgui) == "function" and protectgui)
+    or function() end
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name            = "PhantomUI"
+ScreenGui.ZIndexBehavior  = Enum.ZIndexBehavior.Global
+ScreenGui.ResetOnSpawn    = false
+ProtectGui(ScreenGui)
+ScreenGui.Parent = (gethui and gethui()) or CoreGui
+
+-- ============================================================
+-- GLOBAL TOGGLE/OPTION TABLES (matches reference pattern)
+-- ============================================================
+local Toggles = {}
+local Options  = {}
+
+getgenv().Toggles = Toggles
+getgenv().Options  = Options
+
+-- ============================================================
+-- LIBRARY CORE
+-- ============================================================
+local Phantom = {
+    -- Theme colors
+    FontColor       = Color3.fromRGB(210, 210, 210);
+    MainColor       = Color3.fromRGB(14,  14,  14 );
+    BackgroundColor = Color3.fromRGB(10,  10,  10 );
+    AccentColor     = Color3.fromRGB(0,   207, 255); -- FROST default
+    OutlineColor    = Color3.fromRGB(28,  28,  28 );
+    Black           = Color3.new(0, 0, 0);
+    Font            = Enum.Font.Code;
+
+    -- Internal
+    Registry        = {};
+    RegistryMap     = {};
+    HudRegistry     = {};
+    Signals         = {};
+    OpenedFrames    = {};
+    DependencyBoxes = {};
+    ScreenGui       = ScreenGui;
+
+    -- Themes
+    Themes = {
+        FROST = Color3.fromRGB(0,   207, 255);
+        ACID  = Color3.fromRGB(200, 255, 0  );
+        BLOOD = Color3.fromRGB(255, 45,  45 );
+        GHOST = Color3.fromRGB(224, 224, 224);
+        EMBER = Color3.fromRGB(255, 140, 0  );
+        VENOM = Color3.fromRGB(168, 85,  247);
+    };
+}
+
+Phantom.AccentColorDark = Color3.fromHSV(
+    Color3.toHSV(Phantom.AccentColor) == 0 and 0 or (function()
+        local h,s,v = Color3.toHSV(Phantom.AccentColor)
+        return h
+    end)(),
+    (function() local h,s,v = Color3.toHSV(Phantom.AccentColor); return s end)(),
+    (function() local h,s,v = Color3.toHSV(Phantom.AccentColor); return v/1.5 end)()
+)
+
+-- ============================================================
+-- REGISTRY HELPERS
+-- ============================================================
+function Phantom:AddToRegistry(Inst, Properties, IsHud)
+    local Data = {
+        Instance   = Inst;
+        Properties = Properties;
+    }
+    table.insert(self.Registry, Data)
+    self.RegistryMap[Inst] = Data
+    if IsHud then
+        table.insert(self.HudRegistry, Data)
+    end
+end
+
+function Phantom:RemoveFromRegistry(Inst)
+    local Data = self.RegistryMap[Inst]
+    if not Data then return end
+    for i = #self.Registry, 1, -1 do
+        if self.Registry[i] == Data then
+            table.remove(self.Registry, i)
+        end
+    end
+    for i = #self.HudRegistry, 1, -1 do
+        if self.HudRegistry[i] == Data then
+            table.remove(self.HudRegistry, i)
+        end
+    end
+    self.RegistryMap[Inst] = nil
+end
+
+function Phantom:UpdateColorsUsingRegistry()
+    for _, Object in next, self.Registry do
+        for Property, ColorIdx in next, Object.Properties do
+            if type(ColorIdx) == "string" then
+                Object.Instance[Property] = self[ColorIdx]
+            elseif type(ColorIdx) == "function" then
+                Object.Instance[Property] = ColorIdx()
+            end
+        end
+    end
+end
+
+function Phantom:GetDarkerColor(Color)
+    local H, S, V = Color3.toHSV(Color)
+    return Color3.fromHSV(H, S, V / 1.5)
+end
+
+-- ============================================================
+-- SIGNAL MANAGEMENT
+-- ============================================================
+function Phantom:GiveSignal(Signal)
+    table.insert(self.Signals, Signal)
+end
+
+function Phantom:Unload()
+    for i = #self.Signals, 1, -1 do
+        local conn = table.remove(self.Signals, i)
+        pcall(function() conn:Disconnect() end)
+    end
+    if type(self.OnUnload) == "function" then
+        pcall(self.OnUnload)
+    end
+    ScreenGui:Destroy()
+end
+
+-- Clean up registry when instances are destroyed
+Phantom:GiveSignal(ScreenGui.DescendantRemoving:Connect(function(Inst)
+    if Phantom.RegistryMap[Inst] then
+        Phantom:RemoveFromRegistry(Inst)
+    end
+end))
+
+-- ============================================================
+-- INSTANCE HELPERS
+-- ============================================================
+function Phantom:Create(Class, Properties)
+    local Inst = type(Class) == "string" and Instance.new(Class) or Class
+    for k, v in next, Properties do
+        if k ~= "Parent" then
+            Inst[k] = v
+        end
+    end
+    if Properties.Parent then
+        Inst.Parent = Properties.Parent
+    end
+    return Inst
+end
+
+function Phantom:ApplyTextStroke(Inst)
+    Inst.TextStrokeTransparency = 1
+    self:Create("UIStroke", {
+        Color        = Color3.new(0,0,0);
+        Thickness    = 1;
+        LineJoinMode = Enum.LineJoinMode.Miter;
+        Parent       = Inst;
+    })
+end
+
+function Phantom:CreateLabel(Properties, IsHud)
+    local Inst = self:Create("TextLabel", {
+        BackgroundTransparency = 1;
+        Font                   = self.Font;
+        TextColor3             = self.FontColor;
+        TextSize               = 14;
+        TextStrokeTransparency = 0;
+    })
+    self:ApplyTextStroke(Inst)
+    self:AddToRegistry(Inst, { TextColor3 = "FontColor" }, IsHud)
+    return self:Create(Inst, Properties)
+end
+
+function Phantom:GetTextBounds(Text, Font, Size, Resolution)
+    local B = TextService:GetTextSize(Text, Size, Font, Resolution or Vector2.new(1920, 1080))
+    return B.X, B.Y
+end
+
+function Phantom:SafeCallback(f, ...)
+    if not f then return end
+    if not self.NotifyOnError then return f(...) end
+    local ok, err = pcall(f, ...)
+    if not ok then
+        local _, i = err:find(":%d+: ")
+        self:Notify(i and err:sub(i+1) or err, 3)
+    end
+end
+
+function Phantom:AttemptSave()
+    if self.SaveManager then
+        self.SaveManager:Save()
+    end
+end
+
+function Phantom:UpdateDependencyBoxes()
+    for _, Depbox in next, self.DependencyBoxes do
+        Depbox:Update()
+    end
+end
+
+-- ============================================================
+-- MOUSE HELPERS
+-- ============================================================
+function Phantom:MouseIsOverOpenedFrame()
+    for Frame in next, self.OpenedFrames do
+        local p, s = Frame.AbsolutePosition, Frame.AbsoluteSize
+        if Mouse.X >= p.X and Mouse.X <= p.X + s.X
+        and Mouse.Y >= p.Y and Mouse.Y <= p.Y + s.Y then
+            return true
+        end
+    end
+end
+
+function Phantom:IsMouseOverFrame(Frame)
+    local p, s = Frame.AbsolutePosition, Frame.AbsoluteSize
+    return Mouse.X >= p.X and Mouse.X <= p.X + s.X
+       and Mouse.Y >= p.Y and Mouse.Y <= p.Y + s.Y
+end
+
+-- ============================================================
+-- DRAGGABLE
+-- ============================================================
+function Phantom:MakeDraggable(Frame, Cutoff)
+    Frame.Active = true
+    Frame.InputBegan:Connect(function(Input)
+        if Input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+        local ObjPos = Vector2.new(
+            Mouse.X - Frame.AbsolutePosition.X,
+            Mouse.Y - Frame.AbsolutePosition.Y
+        )
+        if ObjPos.Y > (Cutoff or 9999) then return end
+        while InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
+            Frame.Position = UDim2.new(
+                0, Mouse.X - ObjPos.X + (Frame.Size.X.Offset * Frame.AnchorPoint.X),
+                0, Mouse.Y - ObjPos.Y + (Frame.Size.Y.Offset * Frame.AnchorPoint.Y)
+            )
+            RenderStepped:Wait()
+        end
+    end)
+end
+
+-- ============================================================
+-- HIGHLIGHT HELPER
+-- ============================================================
+function Phantom:OnHighlight(HoverInst, Inst, Props, Defaults)
+    HoverInst.MouseEnter:Connect(function()
+        local Reg = self.RegistryMap[Inst]
+        for Property, ColorIdx in next, Props do
+            Inst[Property] = self[ColorIdx] or ColorIdx
+            if Reg and Reg.Properties[Property] then
+                Reg.Properties[Property] = ColorIdx
+            end
+        end
+    end)
+    HoverInst.MouseLeave:Connect(function()
+        local Reg = self.RegistryMap[Inst]
+        for Property, ColorIdx in next, Defaults do
+            Inst[Property] = self[ColorIdx] or ColorIdx
+            if Reg and Reg.Properties[Property] then
+                Reg.Properties[Property] = ColorIdx
+            end
+        end
+    end)
+end
+
+-- ============================================================
+-- TOOLTIP
+-- ============================================================
+function Phantom:AddToolTip(Text, HoverInst)
+    local X, Y = self:GetTextBounds(Text, self.Font, 13)
+    local Frame = self:Create("Frame", {
+        BackgroundColor3 = self.MainColor;
+        BorderColor3     = self.OutlineColor;
+        Size             = UDim2.fromOffset(X + 8, Y + 6);
+        ZIndex           = 100;
+        Visible          = false;
+        Parent           = ScreenGui;
+    })
+    local Label = self:CreateLabel({
+        Position         = UDim2.fromOffset(4, 2);
+        Size             = UDim2.fromOffset(X, Y);
+        TextSize         = 13;
+        Text             = Text;
+        TextXAlignment   = Enum.TextXAlignment.Left;
+        ZIndex           = 101;
+        Parent           = Frame;
+    })
+    self:AddToRegistry(Frame, { BackgroundColor3 = "MainColor"; BorderColor3 = "OutlineColor" })
+    self:AddToRegistry(Label, { TextColor3 = "FontColor" })
+
+    local hovering = false
+    HoverInst.MouseEnter:Connect(function()
+        if self:MouseIsOverOpenedFrame() then return end
+        hovering = true
+        Frame.Position = UDim2.fromOffset(Mouse.X + 15, Mouse.Y + 12)
+        Frame.Visible  = true
+        while hovering do
+            RunService.Heartbeat:Wait()
+            Frame.Position = UDim2.fromOffset(Mouse.X + 15, Mouse.Y + 12)
+        end
+    end)
+    HoverInst.MouseLeave:Connect(function()
+        hovering      = false
+        Frame.Visible = false
+    end)
+end
+
+-- ============================================================
+-- NOTIFICATIONS
+-- ============================================================
+local NotificationArea = Phantom:Create("Frame", {
+    BackgroundTransparency = 1;
+    Position               = UDim2.new(0, 0, 0, 44);
+    Size                   = UDim2.new(0, 300, 0, 200);
+    ZIndex                 = 100;
+    Parent                 = ScreenGui;
+})
+Phantom:Create("UIListLayout", {
+    Padding          = UDim.new(0, 4);
+    FillDirection    = Enum.FillDirection.Vertical;
+    SortOrder        = Enum.SortOrder.LayoutOrder;
+    Parent           = NotificationArea;
+})
+
+function Phantom:Notify(Text, Time)
+    local X, Y = self:GetTextBounds(Text, self.Font, 13)
+    Y = Y + 8
+
+    local Outer = self:Create("Frame", {
+        BorderColor3     = Color3.new(0,0,0);
+        Size             = UDim2.new(0, 0, 0, Y);
+        ClipsDescendants = true;
+        ZIndex           = 100;
+        Parent           = NotificationArea;
+    })
+    local Inner = self:Create("Frame", {
+        BackgroundColor3 = self.MainColor;
+        BorderColor3     = self.OutlineColor;
+        BorderMode       = Enum.BorderMode.Inset;
+        Size             = UDim2.new(1,0,1,0);
+        ZIndex           = 101;
+        Parent           = Outer;
+    })
+    self:AddToRegistry(Inner, { BackgroundColor3 = "MainColor"; BorderColor3 = "OutlineColor" }, true)
+
+    local InnerBg = self:Create("Frame", {
+        BackgroundColor3 = Color3.new(1,1,1);
+        BorderSizePixel  = 0;
+        Position         = UDim2.new(0,1,0,1);
+        Size             = UDim2.new(1,-2,1,-2);
+        ZIndex           = 102;
+        Parent           = Inner;
+    })
+    local Grad = self:Create("UIGradient", {
+        Color    = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, self:GetDarkerColor(self.MainColor)),
+            ColorSequenceKeypoint.new(1, self.MainColor),
+        });
+        Rotation = -90;
+        Parent   = InnerBg;
+    })
+    self:AddToRegistry(Grad, { Color = function()
+        return ColorSequence.new({
+            ColorSequenceKeypoint.new(0, self:GetDarkerColor(self.MainColor)),
+            ColorSequenceKeypoint.new(1, self.MainColor),
+        })
+    end }, true)
+
+    local Label = self:CreateLabel({
+        Position         = UDim2.new(0, 8, 0, 0);
+        Size             = UDim2.new(1,-8,1,0);
+        TextSize         = 13;
+        Text             = Text;
+        TextXAlignment   = Enum.TextXAlignment.Left;
+        ZIndex           = 103;
+        Parent           = InnerBg;
+    })
+
+    local Accent = self:Create("Frame", {
+        BackgroundColor3 = self.AccentColor;
+        BorderSizePixel  = 0;
+        Position         = UDim2.new(0,-1,0,-1);
+        Size             = UDim2.new(0,3,1,2);
+        ZIndex           = 104;
+        Parent           = Outer;
+    })
+    self:AddToRegistry(Accent, { BackgroundColor3 = "AccentColor" }, true)
+
+    pcall(Outer.TweenSize, Outer, UDim2.new(0, X+20, 0, Y), "Out", "Quad", 0.35, true)
+
+    task.spawn(function()
+        task.wait(Time or 5)
+        pcall(Outer.TweenSize, Outer, UDim2.new(0,0,0,Y), "Out", "Quad", 0.35, true)
+        task.wait(0.35)
+        Outer:Destroy()
+    end)
+end
+
+-- ============================================================
+-- WATERMARK
+-- ============================================================
+do
+    local WOuter = Phantom:Create("Frame", {
+        BorderColor3 = Color3.new(0,0,0);
+        Position     = UDim2.new(0,100,0,-25);
+        Size         = UDim2.new(0,210,0,20);
+        ZIndex       = 200;
+        Visible      = false;
+        Parent       = ScreenGui;
+    })
+    local WInner = Phantom:Create("Frame", {
+        BackgroundColor3 = Phantom.MainColor;
+        BorderColor3     = Phantom.AccentColor;
+        BorderMode       = Enum.BorderMode.Inset;
+        Size             = UDim2.new(1,0,1,0);
+        ZIndex           = 201;
+        Parent           = WOuter;
+    })
+    Phantom:AddToRegistry(WInner, { BackgroundColor3 = "MainColor"; BorderColor3 = "AccentColor" })
+
+    local WBg = Phantom:Create("Frame", {
+        BackgroundColor3 = Color3.new(1,1,1);
+        BorderSizePixel  = 0;
+        Position         = UDim2.new(0,1,0,1);
+        Size             = UDim2.new(1,-2,1,-2);
+        ZIndex           = 202;
+        Parent           = WInner;
+    })
+    local WGrad = Phantom:Create("UIGradient", {
+        Color    = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Phantom:GetDarkerColor(Phantom.MainColor)),
+            ColorSequenceKeypoint.new(1, Phantom.MainColor),
+        });
+        Rotation = -90;
+        Parent   = WBg;
+    })
+    Phantom:AddToRegistry(WGrad, { Color = function()
+        return ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Phantom:GetDarkerColor(Phantom.MainColor)),
+            ColorSequenceKeypoint.new(1, Phantom.MainColor),
+        })
+    end })
+
+    local WLabel = Phantom:CreateLabel({
+        Position       = UDim2.new(0,5,0,0);
+        Size           = UDim2.new(1,-4,1,0);
+        TextSize       = 13;
+        TextXAlignment = Enum.TextXAlignment.Left;
+        ZIndex         = 203;
+        Parent         = WBg;
+    })
+
+    Phantom.Watermark     = WOuter
+    Phantom.WatermarkText = WLabel
+    Phantom:MakeDraggable(WOuter)
+end
+
+function Phantom:SetWatermark(Text)
+    local X, Y = self:GetTextBounds(Text, self.Font, 13)
+    self.Watermark.Size        = UDim2.new(0, X+16, 0, (Y*1.4)+4)
+    self.Watermark.Visible     = true
+    self.WatermarkText.Text    = Text
+end
+
+function Phantom:SetWatermarkVisibility(Bool)
+    self.Watermark.Visible = Bool
+end
+
+-- ============================================================
+-- THEME SYSTEM
+-- ============================================================
+function Phantom:SetTheme(ThemeNameOrColor)
+    local Color = self.Themes[ThemeNameOrColor] or ThemeNameOrColor
+    if typeof(Color) ~= "Color3" then
+        return warn("[PhantomUI] Invalid theme: " .. tostring(ThemeNameOrColor))
+    end
+    self.AccentColor     = Color
+    self.AccentColorDark = self:GetDarkerColor(Color)
+    self:UpdateColorsUsingRegistry()
+
+    -- Flash effect on all windows
+    for _, Outer in next, self._windows or {} do
+        local flash = self:Create("Frame", {
+            Size                   = UDim2.new(1,0,1,0);
+            BackgroundColor3       = Color3.new(1,1,1);
+            BackgroundTransparency = 0.88;
+            BorderSizePixel        = 0;
+            ZIndex                 = 200;
+            Parent                 = Outer;
+        })
+        TweenService:Create(flash, TweenInfo.new(0.22, Enum.EasingStyle.Linear), {
+            BackgroundTransparency = 1
+        }):Play()
+        task.delay(0.22, function() flash:Destroy() end)
+    end
+end
+
+Phantom._windows = {}
+
+-- ============================================================
+-- BASE COMPONENT METHODS (metatable shared by Groupbox/Depbox)
+-- ============================================================
+local BaseGroupbox = {}
+BaseGroupbox.__index = BaseGroupbox
+BaseGroupbox.__namecall = function(t, k, ...) return BaseGroupbox[k](t, ...) end
+
+-- ── BLANK SPACER ──────────────────────────────────────────
+function BaseGroupbox:AddBlank(Size)
+    Phantom:Create("Frame", {
+        BackgroundTransparency = 1;
+        Size                   = UDim2.new(1,0,0,Size);
+        ZIndex                 = 1;
+        Parent                 = self.Container;
+    })
+end
+
+-- ── SECTION DIVIDER ───────────────────────────────────────
+function BaseGroupbox:AddSection(Text)
+    local Row = Phantom:Create("Frame", {
+        BackgroundTransparency = 1;
+        Size                   = UDim2.new(1,0,0,24);
+        ZIndex                 = 3;
+        Parent                 = self.Container;
+    })
+    local Label = Phantom:CreateLabel({
+        Size           = UDim2.new(0,80,1,0);
+        TextSize       = 10;
+        Text           = Text;
+        TextColor3     = Phantom.OutlineColor;
+        TextXAlignment = Enum.TextXAlignment.Left;
+        ZIndex         = 4;
+        Parent         = Row;
+    })
+    Phantom:RemoveFromRegistry(Label)
+    Phantom:AddToRegistry(Label, { TextColor3 = "OutlineColor" })
+
+    Phantom:Create("Frame", {
+        AnchorPoint      = Vector2.new(1,0.5);
+        Position         = UDim2.new(1,0,0.5,0);
+        Size             = UDim2.new(1,-88,0,1);
+        BackgroundColor3 = Phantom.OutlineColor;
+        BorderSizePixel  = 0;
+        ZIndex           = 4;
+        Parent           = Row;
+    })
+
+    self:Resize()
+end
+
+-- ── LABEL ─────────────────────────────────────────────────
+function BaseGroupbox:AddLabel(Text, Wrap)
+    local Label = {}
+    local TextLabel = Phantom:CreateLabel({
+        Size           = UDim2.new(1,-4,0,14);
+        TextSize       = 13;
+        Text           = Text;
+        TextWrapped    = Wrap or false;
+        TextXAlignment = Enum.TextXAlignment.Left;
+        ZIndex         = 5;
+        Parent         = self.Container;
+    })
+    if not Wrap then
+        Phantom:Create("UIListLayout", {
+            Padding              = UDim.new(0,4);
+            FillDirection        = Enum.FillDirection.Horizontal;
+            HorizontalAlignment  = Enum.HorizontalAlignment.Right;
+            SortOrder            = Enum.SortOrder.LayoutOrder;
+            Parent               = TextLabel;
+        })
+    end
+    Label.TextLabel = TextLabel
+    Label.Container = self.Container
+    function Label:SetText(t)
+        TextLabel.Text = t
+    end
+    self:AddBlank(4)
+    self:Resize()
+    return Label
+end
+
+-- ── TOGGLE ────────────────────────────────────────────────
+function BaseGroupbox:AddToggle(Idx, Info)
+    assert(Info.Text, "AddToggle: Missing `Text`.")
+
+    local Toggle = {
+        Value    = not not Info.Default;
+        Type     = "Toggle";
+        Callback = Info.Callback or function() end;
+        Addons   = {};
+    }
+
+    local ToggleOuter = Phantom:Create("Frame", {
+        BackgroundColor3 = Phantom.Black;
+        BorderColor3     = Phantom.Black;
+        Size             = UDim2.new(0,13,0,13);
+        ZIndex           = 5;
+        Parent           = self.Container;
+    })
+    Phantom:AddToRegistry(ToggleOuter, { BorderColor3 = "Black" })
+
+    local ToggleInner = Phantom:Create("Frame", {
+        BackgroundColor3 = Phantom.MainColor;
+        BorderColor3     = Phantom.OutlineColor;
+        BorderMode       = Enum.BorderMode.Inset;
+        Size             = UDim2.new(1,0,1,0);
+        ZIndex           = 6;
+        Parent           = ToggleOuter;
+    })
+    Phantom:AddToRegistry(ToggleInner, { BackgroundColor3 = "MainColor"; BorderColor3 = "OutlineColor" })
+
+    local ToggleLabel = Phantom:CreateLabel({
+        Size           = UDim2.new(0,210,1,0);
+        Position       = UDim2.new(1,6,0,0);
+        TextSize       = 13;
+        Text           = Info.Text;
+        TextXAlignment = Enum.TextXAlignment.Left;
+        ZIndex         = 6;
+        Parent         = ToggleInner;
+    })
+    Phantom:Create("UIListLayout", {
+        Padding             = UDim.new(0,4);
+        FillDirection       = Enum.FillDirection.Horizontal;
+        HorizontalAlignment = Enum.HorizontalAlignment.Right;
+        SortOrder           = Enum.SortOrder.LayoutOrder;
+        Parent              = ToggleLabel;
+    })
+
+    -- Wider hover region
+    local HitArea = Phantom:Create("Frame", {
+        BackgroundTransparency = 1;
+        Size                   = UDim2.new(0,180,1,0);
+        ZIndex                 = 8;
+        Parent                 = ToggleOuter;
+    })
+    Phantom:OnHighlight(HitArea, ToggleOuter,
+        { BorderColor3 = "AccentColor" },
+        { BorderColor3 = "Black" }
+    )
+
+    if type(Info.Tooltip) == "string" then
+        Phantom:AddToolTip(Info.Tooltip, HitArea)
+    end
+
+    function Toggle:Display()
+        ToggleInner.BackgroundColor3 = self.Value and Phantom.AccentColor or Phantom.MainColor
+        ToggleInner.BorderColor3     = self.Value and Phantom.AccentColorDark or Phantom.OutlineColor
+        local Reg = Phantom.RegistryMap[ToggleInner]
+        if Reg then
+            Reg.Properties.BackgroundColor3 = self.Value and "AccentColor" or "MainColor"
+            Reg.Properties.BorderColor3     = self.Value and "AccentColorDark" or "OutlineColor"
+        end
+    end
+
+    function Toggle:SetValue(Bool)
+        self.Value = not not Bool
+        self:Display()
+        for _, Addon in next, self.Addons do
+            if Addon.Type == "KeyPicker" and Addon.SyncToggleState then
+                Addon.Toggled = Bool
+                Addon:Update()
+            end
+        end
+        Phantom:SafeCallback(self.Callback, self.Value)
+        Phantom:SafeCallback(self.Changed, self.Value)
+        Phantom:UpdateDependencyBoxes()
+    end
+
+    function Toggle:OnChanged(Func)
+        self.Changed = Func
+        Func(self.Value)
+    end
+
+    HitArea.InputBegan:Connect(function(Input)
+        if Input.UserInputType == Enum.UserInputType.MouseButton1
+        and not Phantom:MouseIsOverOpenedFrame() then
+            Toggle:SetValue(not Toggle.Value)
+            Phantom:AttemptSave()
+        end
+    end)
+
+    Toggle:Display()
+    self:AddBlank(Info.BlankSize or 6)
+    self:Resize()
+
+    Toggle.TextLabel = ToggleLabel
+    Toggle.Container = self.Container
+    setmetatable(Toggle, BaseGroupbox)
+
+    Toggles[Idx] = Toggle
+    Phantom:UpdateDependencyBoxes()
+
+    return Toggle
+end
+
+-- ── SLIDER ────────────────────────────────────────────────
+function BaseGroupbox:AddSlider(Idx, Info)
+    assert(Info.Text,    "AddSlider: Missing `Text`.")
+    assert(Info.Min,     "AddSlider: Missing `Min`.")
+    assert(Info.Max,     "AddSlider: Missing `Max`.")
+    assert(Info.Default ~= nil, "AddSlider: Missing `Default`.")
+    assert(Info.Rounding ~= nil, "AddSlider: Missing `Rounding`.")
+
+    local MaxSize = 230
+
+    local Slider = {
+        Value    = Info.Default;
+        Min      = Info.Min;
+        Max      = Info.Max;
+        Rounding = Info.Rounding;
+        MaxSize  = MaxSize;
+        Type     = "Slider";
+        Callback = Info.Callback or function() end;
+    }
+
+    if not Info.Compact then
+        Phantom:CreateLabel({
+            Size           = UDim2.new(1,0,0,13);
+            TextSize       = 13;
+            Text           = Info.Text;
+            TextXAlignment = Enum.TextXAlignment.Left;
+            TextYAlignment = Enum.TextYAlignment.Bottom;
+            ZIndex         = 5;
+            Parent         = self.Container;
+        })
+        self:AddBlank(2)
+    end
+
+    local SliderOuter = Phantom:Create("Frame", {
+        BackgroundColor3 = Phantom.Black;
+        BorderColor3     = Phantom.Black;
+        Size             = UDim2.new(1,-4,0,13);
+        ZIndex           = 5;
+        Parent           = self.Container;
+    })
+    Phantom:AddToRegistry(SliderOuter, { BorderColor3 = "Black" })
+
+    local SliderInner = Phantom:Create("Frame", {
+        BackgroundColor3 = Phantom.MainColor;
+        BorderColor3     = Phantom.OutlineColor;
+        BorderMode       = Enum.BorderMode.Inset;
+        Size             = UDim2.new(1,0,1,0);
+        ZIndex           = 6;
+        Parent           = SliderOuter;
+    })
+    Phantom:AddToRegistry(SliderInner, { BackgroundColor3 = "MainColor"; BorderColor3 = "OutlineColor" })
+
+    local Fill = Phantom:Create("Frame", {
+        BackgroundColor3 = Phantom.AccentColor;
+        BorderColor3     = Phantom.AccentColorDark;
+        Size             = UDim2.new(0,0,1,0);
+        ZIndex           = 7;
+        Parent           = SliderInner;
+    })
+    Phantom:AddToRegistry(Fill, { BackgroundColor3 = "AccentColor"; BorderColor3 = "AccentColorDark" })
+
+    local BorderHide = Phantom:Create("Frame", {
+        BackgroundColor3 = Phantom.AccentColor;
+        BorderSizePixel  = 0;
+        Position         = UDim2.new(1,0,0,0);
+        Size             = UDim2.new(0,1,1,0);
+        ZIndex           = 8;
+        Parent           = Fill;
+    })
+    Phantom:AddToRegistry(BorderHide, { BackgroundColor3 = "AccentColor" })
+
+    local DisplayLabel = Phantom:CreateLabel({
+        Size     = UDim2.new(1,0,1,0);
+        TextSize = 13;
+        Text     = "";
+        ZIndex   = 9;
+        Parent   = SliderInner;
+    })
+
+    Phantom:OnHighlight(SliderOuter, SliderOuter,
+        { BorderColor3 = "AccentColor" },
+        { BorderColor3 = "Black" }
+    )
+
+    if type(Info.Tooltip) == "string" then
+        Phantom:AddToolTip(Info.Tooltip, SliderOuter)
+    end
+
+    local function Round(v)
+        if Slider.Rounding == 0 then return math.floor(v) end
+        return tonumber(string.format("%." .. Slider.Rounding .. "f", v))
+    end
+
+    function Slider:Display()
+        local Suffix = Info.Suffix or ""
+        if Info.Compact then
+            DisplayLabel.Text = Info.Text .. ": " .. self.Value .. Suffix
+        elseif Info.HideMax then
+            DisplayLabel.Text = tostring(self.Value) .. Suffix
+        else
+            DisplayLabel.Text = self.Value .. Suffix .. " / " .. self.Max .. Suffix
+        end
+        local X = math.ceil(((self.Value - self.Min) / (self.Max - self.Min)) * self.MaxSize)
+        Fill.Size = UDim2.new(0, X, 1, 0)
+        BorderHide.Visible = X ~= self.MaxSize and X ~= 0
+    end
+
+    function Slider:SetValue(Str)
+        local Num = tonumber(Str)
+        if not Num then return end
+        Num = math.clamp(Num, self.Min, self.Max)
+        self.Value = Round(Num)
+        self:Display()
+        Phantom:SafeCallback(self.Callback, self.Value)
+        Phantom:SafeCallback(self.Changed, self.Value)
+    end
+
+    function Slider:OnChanged(Func)
+        self.Changed = Func
+        Func(self.Value)
+    end
+
+    SliderInner.InputBegan:Connect(function(Input)
+        if Input.UserInputType ~= Enum.UserInputType.MouseButton1
+        or Phantom:MouseIsOverOpenedFrame() then return end
+
+        local mPos = Mouse.X
+        local gPos = Fill.Size.X.Offset
+        local Diff = mPos - (Fill.AbsolutePosition.X + gPos)
+
+        while InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
+            local nX = math.clamp(gPos + (Mouse.X - mPos) + Diff, 0, MaxSize)
+            local nV = Round(Slider.Min + (nX / MaxSize) * (Slider.Max - Slider.Min))
+            local Old = Slider.Value
+            Slider.Value = nV
+            Slider:Display()
+            if nV ~= Old then
+                Phantom:SafeCallback(Slider.Callback, Slider.Value)
+                Phantom:SafeCallback(Slider.Changed, Slider.Value)
+            end
+            RenderStepped:Wait()
+        end
+        Phantom:AttemptSave()
+    end)
+
+    Slider:Display()
+    self:AddBlank(Info.BlankSize or 5)
+    self:Resize()
+
+    Options[Idx] = Slider
+    return Slider
+end
+
+-- ── BUTTON ────────────────────────────────────────────────
+function BaseGroupbox:AddButton(Info)
+    -- Accepts table or (text, func)
+    local Text, Func, DoubleClick, Tooltip
+    if type(Info) == "table" then
+        Text        = Info.Text
+        Func        = Info.Func
+        DoubleClick = Info.DoubleClick
+        Tooltip     = Info.Tooltip
+    else
+        Text = Info
+        Func = select(1, ...)
+    end
+    assert(type(Func) == "function", "AddButton: Missing `Func` callback.")
+
+    local Button = { Text = Text; Func = Func; DoubleClick = DoubleClick }
+
+    local function MakeOuter()
+        local Outer = Phantom:Create("Frame", {
+            BackgroundColor3 = Phantom.Black;
+            BorderColor3     = Phantom.Black;
+            Size             = UDim2.new(1,-4,0,20);
+            ZIndex           = 5;
+            Parent           = self.Container;
+        })
+        local Inner = Phantom:Create("Frame", {
+            BackgroundColor3 = Phantom.MainColor;
+            BorderColor3     = Phantom.OutlineColor;
+            BorderMode       = Enum.BorderMode.Inset;
+            Size             = UDim2.new(1,0,1,0);
+            ZIndex           = 6;
+            Parent           = Outer;
+        })
+        Phantom:Create("UIGradient", {
+            Color    = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, Color3.new(1,1,1)),
+                ColorSequenceKeypoint.new(1, Color3.fromRGB(212,212,212)),
+            });
+            Rotation = 90;
+            Parent   = Inner;
+        })
+        local Label = Phantom:CreateLabel({
+            Size     = UDim2.new(1,0,1,0);
+            TextSize = 13;
+            Text     = Text;
+            ZIndex   = 7;
+            Parent   = Inner;
+        })
+        Phantom:AddToRegistry(Outer, { BorderColor3 = "Black" })
+        Phantom:AddToRegistry(Inner, { BackgroundColor3 = "MainColor"; BorderColor3 = "OutlineColor" })
+        Phantom:OnHighlight(Outer, Outer,
+            { BorderColor3 = "AccentColor" },
+            { BorderColor3 = "Black" }
+        )
+        return Outer, Inner, Label
+    end
+
+    Button.Outer, Button.Inner, Button.Label = MakeOuter()
+
+    local function WaitForClick(event, timeout)
+        local fired = false
+        local conn
+        conn = event:Connect(function(inp)
+            if inp.UserInputType == Enum.UserInputType.MouseButton1 then
+                fired = true
+                conn:Disconnect()
+            end
+        end)
+        local t = 0
+        while not fired and t < timeout do
+            t = t + RunService.Heartbeat:Wait()
+        end
+        conn:Disconnect()
+        return fired
+    end
+
+    Button.Outer.InputBegan:Connect(function(Input)
+        if Input.UserInputType ~= Enum.UserInputType.MouseButton1
+        or Phantom:MouseIsOverOpenedFrame() then return end
+        if Button.Locked then return end
+
+        if DoubleClick then
+            Phantom:RemoveFromRegistry(Button.Label)
+            Phantom:AddToRegistry(Button.Label, { TextColor3 = "AccentColor" })
+            Button.Label.TextColor3 = Phantom.AccentColor
+            Button.Label.Text       = "Are you sure?"
+            Button.Locked           = true
+            local clicked = WaitForClick(Button.Outer.InputBegan, 0.5)
+            Phantom:RemoveFromRegistry(Button.Label)
+            Phantom:AddToRegistry(Button.Label, { TextColor3 = "FontColor" })
+            Button.Label.TextColor3 = Phantom.FontColor
+            Button.Label.Text       = Text
+            task.defer(rawset, Button, "Locked", false)
+            if clicked then Phantom:SafeCallback(Func) end
+            return
+        end
+
+        Phantom:SafeCallback(Func)
+    end)
+
+    if type(Tooltip) == "string" then
+        Phantom:AddToolTip(Tooltip, Button.Outer)
+    end
+
+    self:AddBlank(4)
+    self:Resize()
+
+    return Button
+end
+
+-- ── TEXTBOX (INPUT) ───────────────────────────────────────
+function BaseGroupbox:AddInput(Idx, Info)
+    assert(Info.Text, "AddInput: Missing `Text`.")
+
+    local Textbox = {
+        Value    = Info.Default or "";
+        Numeric  = Info.Numeric or false;
+        Finished = Info.Finished or false;
+        Type     = "Input";
+        Callback = Info.Callback or function() end;
+    }
+
+    Phantom:CreateLabel({
+        Size           = UDim2.new(1,0,0,14);
+        TextSize       = 13;
+        Text           = Info.Text;
+        TextXAlignment = Enum.TextXAlignment.Left;
+        ZIndex         = 5;
+        Parent         = self.Container;
+    })
+    self:AddBlank(1)
+
+    local BoxOuter = Phantom:Create("Frame", {
+        BackgroundColor3 = Phantom.Black;
+        BorderColor3     = Phantom.Black;
+        Size             = UDim2.new(1,-4,0,20);
+        ZIndex           = 5;
+        Parent           = self.Container;
+    })
+    local BoxInner = Phantom:Create("Frame", {
+        BackgroundColor3 = Phantom.MainColor;
+        BorderColor3     = Phantom.OutlineColor;
+        BorderMode       = Enum.BorderMode.Inset;
+        Size             = UDim2.new(1,0,1,0);
+        ZIndex           = 6;
+        Parent           = BoxOuter;
+    })
+    Phantom:Create("UIGradient", {
+        Color    = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.new(1,1,1)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(212,212,212)),
+        });
+        Rotation = 90;
+        Parent   = BoxInner;
+    })
+    Phantom:AddToRegistry(BoxOuter, { BorderColor3 = "Black" })
+    Phantom:AddToRegistry(BoxInner, { BackgroundColor3 = "MainColor"; BorderColor3 = "OutlineColor" })
+    Phantom:OnHighlight(BoxOuter, BoxOuter,
+        { BorderColor3 = "AccentColor" },
+        { BorderColor3 = "Black" }
+    )
+
+    if type(Info.Tooltip) == "string" then
+        Phantom:AddToolTip(Info.Tooltip, BoxOuter)
+    end
+
+    local Clip = Phantom:Create("Frame", {
+        BackgroundTransparency = 1;
+        ClipsDescendants       = true;
+        Position               = UDim2.new(0,5,0,0);
+        Size                   = UDim2.new(1,-5,1,0);
+        ZIndex                 = 7;
+        Parent                 = BoxInner;
+    })
+    local Box = Phantom:Create("TextBox", {
+        BackgroundTransparency = 1;
+        Size                   = UDim2.new(5,0,1,0);
+        Font                   = Phantom.Font;
+        PlaceholderColor3      = Color3.fromRGB(80,80,80);
+        PlaceholderText        = Info.Placeholder or "";
+        Text                   = Info.Default or "";
+        TextColor3             = Phantom.FontColor;
+        TextSize               = 13;
+        TextStrokeTransparency = 0;
+        TextXAlignment         = Enum.TextXAlignment.Left;
+        ClearTextOnFocus       = false;
+        ZIndex                 = 7;
+        Parent                 = Clip;
+    })
+    Phantom:ApplyTextStroke(Box)
+    Phantom:AddToRegistry(Box, { TextColor3 = "FontColor" })
+
+    function Textbox:SetValue(Text)
+        if Info.MaxLength and #Text > Info.MaxLength then
+            Text = Text:sub(1, Info.MaxLength)
+        end
+        if self.Numeric and not tonumber(Text) and #Text > 0 then
+            Text = self.Value
+        end
+        self.Value = Text
+        Box.Text   = Text
+        Phantom:SafeCallback(self.Callback, self.Value)
+        Phantom:SafeCallback(self.Changed, self.Value)
+    end
+
+    function Textbox:OnChanged(Func)
+        self.Changed = Func
+        Func(self.Value)
+    end
+
+    if Textbox.Finished then
+        Box.FocusLost:Connect(function(enter)
+            if not enter then return end
+            Textbox:SetValue(Box.Text)
+            Phantom:AttemptSave()
+        end)
+    else
+        Box:GetPropertyChangedSignal("Text"):Connect(function()
+            Textbox:SetValue(Box.Text)
+        end)
+    end
+
+    self:AddBlank(4)
+    self:Resize()
+
+    Options[Idx] = Textbox
+    return Textbox
+end
+
+-- ── DROPDOWN ──────────────────────────────────────────────
+function BaseGroupbox:AddDropdown(Idx, Info)
+    assert(Info.Values,                              "AddDropdown: Missing `Values`.")
+    assert(Info.AllowNull or Info.Default ~= nil,   "AddDropdown: Missing `Default`. Use `AllowNull = true` if intentional.")
+
+    local Dropdown = {
+        Values   = Info.Values;
+        Value    = Info.Multi and {} or nil;
+        Multi    = Info.Multi;
+        Type     = "Dropdown";
+        Callback = Info.Callback or function() end;
+    }
+
+    if not Info.Compact and Info.Text then
+        Phantom:CreateLabel({
+            Size           = UDim2.new(1,0,0,13);
+            TextSize       = 13;
+            Text           = Info.Text;
+            TextXAlignment = Enum.TextXAlignment.Left;
+            TextYAlignment = Enum.TextYAlignment.Bottom;
+            ZIndex         = 5;
+            Parent         = self.Container;
+        })
+        self:AddBlank(2)
+    end
+
+    local DropOuter = Phantom:Create("Frame", {
+        BackgroundColor3 = Phantom.Black;
+        BorderColor3     = Phantom.Black;
+        Size             = UDim2.new(1,-4,0,20);
+        ZIndex           = 5;
+        Parent           = self.Container;
+    })
+    local DropInner = Phantom:Create("Frame", {
+        BackgroundColor3 = Phantom.MainColor;
+        BorderColor3     = Phantom.OutlineColor;
+        BorderMode       = Enum.BorderMode.Inset;
+        Size             = UDim2.new(1,0,1,0);
+        ZIndex           = 6;
+        Parent           = DropOuter;
+    })
+    Phantom:Create("UIGradient", {
+        Color    = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.new(1,1,1)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(212,212,212)),
+        });
+        Rotation = 90;
+        Parent   = DropInner;
+    })
+    Phantom:AddToRegistry(DropOuter, { BorderColor3 = "Black" })
+    Phantom:AddToRegistry(DropInner, { BackgroundColor3 = "MainColor"; BorderColor3 = "OutlineColor" })
+    Phantom:OnHighlight(DropOuter, DropOuter,
+        { BorderColor3 = "AccentColor" },
+        { BorderColor3 = "Black" }
+    )
+
+    local Arrow = Phantom:Create("ImageLabel", {
+        AnchorPoint          = Vector2.new(0,0.5);
+        BackgroundTransparency = 1;
+        Position             = UDim2.new(1,-16,0.5,0);
+        Size                 = UDim2.new(0,12,0,12);
+        Image                = "rbxassetid://6282522798";
+        ZIndex               = 8;
+        Parent               = DropInner;
+    })
+
+    local ItemLabel = Phantom:CreateLabel({
+        Position       = UDim2.new(0,5,0,0);
+        Size           = UDim2.new(1,-20,1,0);
+        TextSize       = 13;
+        Text           = "--";
+        TextXAlignment = Enum.TextXAlignment.Left;
+        TextWrapped    = true;
+        ZIndex         = 7;
+        Parent         = DropInner;
+    })
+
+    if type(Info.Tooltip) == "string" then
+        Phantom:AddToolTip(Info.Tooltip, DropOuter)
+    end
+
+    -- List frame (lives in ScreenGui so it overlays everything)
+    local MAX_ITEMS = 8
+
+    local ListOuter = Phantom:Create("Frame", {
+        BackgroundColor3 = Phantom.Black;
+        BorderColor3     = Phantom.Black;
+        ZIndex           = 20;
+        Visible          = false;
+        Parent           = ScreenGui;
+    })
+
+    local ListInner = Phantom:Create("Frame", {
+        BackgroundColor3 = Phantom.MainColor;
+        BorderColor3     = Phantom.OutlineColor;
+        BorderMode       = Enum.BorderMode.Inset;
+        Size             = UDim2.new(1,0,1,0);
+        ZIndex           = 21;
+        Parent           = ListOuter;
+    })
+    Phantom:AddToRegistry(ListInner, { BackgroundColor3 = "MainColor"; BorderColor3 = "OutlineColor" })
+
+    local Scrolling = Phantom:Create("ScrollingFrame", {
+        BackgroundTransparency = 1;
+        BorderSizePixel        = 0;
+        CanvasSize             = UDim2.new(0,0,0,0);
+        Size                   = UDim2.new(1,0,1,0);
+        ZIndex                 = 21;
+        TopImage               = "rbxasset://textures/ui/Scroll/scroll-middle.png";
+        BottomImage            = "rbxasset://textures/ui/Scroll/scroll-middle.png";
+        ScrollBarThickness     = 3;
+        ScrollBarImageColor3   = Phantom.AccentColor;
+        Parent                 = ListInner;
+    })
+    Phantom:AddToRegistry(Scrolling, { ScrollBarImageColor3 = "AccentColor" })
+
+    Phantom:Create("UIListLayout", {
+        FillDirection = Enum.FillDirection.Vertical;
+        SortOrder     = Enum.SortOrder.LayoutOrder;
+        Parent        = Scrolling;
+    })
+
+    local function RecalcPos()
+        ListOuter.Position = UDim2.fromOffset(
+            DropOuter.AbsolutePosition.X,
+            DropOuter.AbsolutePosition.Y + DropOuter.Size.Y.Offset + 1
+        )
+    end
+    local function RecalcSize(Y)
+        ListOuter.Size = UDim2.fromOffset(
+            DropOuter.AbsoluteSize.X,
+            Y or (MAX_ITEMS * 20 + 2)
+        )
+    end
+    RecalcPos(); RecalcSize()
+    DropOuter:GetPropertyChangedSignal("AbsolutePosition"):Connect(RecalcPos)
+
+    function Dropdown:Display()
+        local Str = ""
+        if Info.Multi then
+            for _, v in next, self.Values do
+                if self.Value[v] then Str = Str .. v .. ", " end
+            end
+            Str = Str:sub(1, #Str-2)
+        else
+            Str = self.Value or ""
+        end
+        ItemLabel.Text = Str == "" and "--" or Str
+    end
+
+    function Dropdown:BuildList()
+        for _, c in next, Scrolling:GetChildren() do
+            if not c:IsA("UIListLayout") then c:Destroy() end
+        end
+        local Buttons = {}
+        local Count   = 0
+
+        for _, Value in next, self.Values do
+            Count = Count + 1
+            local Btn = Phantom:Create("Frame", {
+                BackgroundColor3 = Phantom.MainColor;
+                BorderColor3     = Phantom.OutlineColor;
+                BorderMode       = Enum.BorderMode.Middle;
+                Size             = UDim2.new(1,-1,0,20);
+                ZIndex           = 23;
+                Active           = true;
+                Parent           = Scrolling;
+            })
+            Phantom:AddToRegistry(Btn, { BackgroundColor3 = "MainColor"; BorderColor3 = "OutlineColor" })
+
+            local BtnLabel = Phantom:CreateLabel({
+                Size           = UDim2.new(1,-6,1,0);
+                Position       = UDim2.new(0,6,0,0);
+                TextSize       = 13;
+                Text           = Value;
+                TextXAlignment = Enum.TextXAlignment.Left;
+                ZIndex         = 24;
+                Parent         = Btn;
+            })
+            Phantom:OnHighlight(Btn, Btn,
+                { BorderColor3 = "AccentColor" },
+                { BorderColor3 = "OutlineColor" }
+            )
+
+            local Selected = Info.Multi and self.Value[Value] or (self.Value == Value)
+
+            local Table = {}
+            function Table:UpdateButton()
+                Selected = Info.Multi and Dropdown.Value[Value] or (Dropdown.Value == Value)
+                BtnLabel.TextColor3 = Selected and Phantom.AccentColor or Phantom.FontColor
+                local Reg = Phantom.RegistryMap[BtnLabel]
+                if Reg then
+                    Reg.Properties.TextColor3 = Selected and "AccentColor" or "FontColor"
+                end
+            end
+
+            BtnLabel.InputBegan:Connect(function(Input)
+                if Input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+                local Try = not Selected
+                if Info.Multi then
+                    Selected = Try
+                    if Selected then self.Value[Value] = true else self.Value[Value] = nil end
+                else
+                    if not Try and not Info.AllowNull then return end
+                    Selected = Try
+                    self.Value = Selected and Value or nil
+                    for _, OB in next, Buttons do OB:UpdateButton() end
+                end
+                Table:UpdateButton()
+                self:Display()
+                Phantom:SafeCallback(self.Callback, self.Value)
+                Phantom:SafeCallback(self.Changed, self.Value)
+                Phantom:AttemptSave()
+            end)
+
+            Table:UpdateButton()
+            Buttons[Btn] = Table
+        end
+
+        Scrolling.CanvasSize = UDim2.fromOffset(0, Count * 20 + 1)
+        RecalcSize(math.clamp(Count * 20, 0, MAX_ITEMS * 20) + 1)
+        self:Display()
+    end
+
+    function Dropdown:Open()
+        self:BuildList()
+        ListOuter.Visible = true
+        Phantom.OpenedFrames[ListOuter] = true
+        Arrow.Rotation = 180
+    end
+
+    function Dropdown:Close()
+        ListOuter.Visible = false
+        Phantom.OpenedFrames[ListOuter] = nil
+        Arrow.Rotation = 0
+    end
+
+    function Dropdown:SetValues(NewValues)
+        if NewValues then self.Values = NewValues end
+        self:BuildList()
+    end
+
+    function Dropdown:SetValue(Val)
+        if self.Multi then
+            local New = {}
+            for v in next, Val do
+                if table.find(self.Values, v) then New[v] = true end
+            end
+            self.Value = New
+        else
+            if not Val then
+                self.Value = nil
+            elseif table.find(self.Values, Val) then
+                self.Value = Val
+            end
+        end
+        self:BuildList()
+        Phantom:SafeCallback(self.Callback, self.Value)
+        Phantom:SafeCallback(self.Changed, self.Value)
+    end
+
+    function Dropdown:OnChanged(Func)
+        self.Changed = Func
+        Func(self.Value)
+    end
+
+    DropOuter.InputBegan:Connect(function(Input)
+        if Input.UserInputType ~= Enum.UserInputType.MouseButton1
+        or Phantom:MouseIsOverOpenedFrame() then return end
+        if ListOuter.Visible then Dropdown:Close() else Dropdown:Open() end
+    end)
+
+    Phantom:GiveSignal(InputService.InputBegan:Connect(function(Input)
+        if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+            if not Phantom:IsMouseOverFrame(ListOuter)
+            and not Phantom:IsMouseOverFrame(DropOuter) then
+                Dropdown:Close()
+            end
+        end
+    end))
+
+    -- Apply defaults
+    if Info.Default ~= nil then
+        if Info.Multi then
+            local Defaults = type(Info.Default) == "table" and Info.Default or { Info.Default }
+            for _, v in next, Defaults do
+                if table.find(Dropdown.Values, v) then
+                    Dropdown.Value[v] = true
+                end
+            end
+        else
+            if table.find(Dropdown.Values, Info.Default) then
+                Dropdown.Value = Info.Default
+            end
+        end
+    end
+
+    Dropdown:BuildList()
+    Dropdown:Display()
+
+    self:AddBlank(Info.BlankSize or 4)
+    self:Resize()
+
+    Options[Idx] = Dropdown
+    return Dropdown
+end
+
+-- ── KEYBIND ───────────────────────────────────────────────
+function BaseGroupbox:AddKeybind(Idx, Info)
+    assert(Info.Text,    "AddKeybind: Missing `Text`.")
+    assert(Info.Default, "AddKeybind: Missing `Default`.")
+
+    local KeyPicker = {
+        Value           = Info.Default;
+        Toggled         = false;
+        Mode            = Info.Mode or "Toggle";
+        Type            = "KeyPicker";
+        Callback        = Info.Callback or function() end;
+        ChangedCallback = Info.ChangedCallback or function() end;
+        SyncToggleState = Info.SyncToggleState or false;
+    }
+
+    local ToggleLabel = self.TextLabel
+    local Picking     = false
+
+    local PickOuter = Phantom:Create("Frame", {
+        BackgroundColor3 = Phantom.Black;
+        BorderColor3     = Phantom.Black;
+        Size             = UDim2.new(0,28,0,15);
+        ZIndex           = 6;
+        Parent           = ToggleLabel or self.Container;
+    })
+    local PickInner = Phantom:Create("Frame", {
+        BackgroundColor3 = Phantom.BackgroundColor;
+        BorderColor3     = Phantom.OutlineColor;
+        BorderMode       = Enum.BorderMode.Inset;
+        Size             = UDim2.new(1,0,1,0);
+        ZIndex           = 7;
+        Parent           = PickOuter;
+    })
+    Phantom:AddToRegistry(PickInner, { BackgroundColor3 = "BackgroundColor"; BorderColor3 = "OutlineColor" })
+
+    local DisplayLabel = Phantom:CreateLabel({
+        Size        = UDim2.new(1,0,1,0);
+        TextSize    = 11;
+        Text        = tostring(Info.Default);
+        TextWrapped = true;
+        ZIndex      = 8;
+        Parent      = PickInner;
+    })
+
+    -- Keybind container HUD label
+    local ContainerLabel = Phantom:CreateLabel({
+        TextXAlignment = Enum.TextXAlignment.Left;
+        Size           = UDim2.new(1,0,0,18);
+        TextSize       = 13;
+        Visible        = false;
+        ZIndex         = 110;
+        Parent         = Phantom.KeybindContainer;
+    }, true)
+
+    -- Mode selector
+    local Modes = Info.Modes or { "Always", "Toggle", "Hold" }
+    if KeyPicker.SyncToggleState then Modes = { "Toggle" } end
+
+    local ModeOuter = Phantom:Create("Frame", {
+        BorderColor3 = Phantom.Black;
+        Size         = UDim2.new(0,60,0, #Modes*15+2);
+        Visible      = false;
+        ZIndex       = 14;
+        Parent       = ScreenGui;
+    })
+    local ModeInner = Phantom:Create("Frame", {
+        BackgroundColor3 = Phantom.BackgroundColor;
+        BorderColor3     = Phantom.OutlineColor;
+        BorderMode       = Enum.BorderMode.Inset;
+        Size             = UDim2.new(1,0,1,0);
+        ZIndex           = 15;
+        Parent           = ModeOuter;
+    })
+    Phantom:AddToRegistry(ModeInner, { BackgroundColor3 = "BackgroundColor"; BorderColor3 = "OutlineColor" })
+    Phantom:Create("UIListLayout", {
+        FillDirection = Enum.FillDirection.Vertical;
+        SortOrder     = Enum.SortOrder.LayoutOrder;
+        Parent        = ModeInner;
+    })
+
+    if ToggleLabel then
+        local function UpdateModePos()
+            ModeOuter.Position = UDim2.fromOffset(
+                ToggleLabel.AbsolutePosition.X + ToggleLabel.AbsoluteSize.X + 4,
+                ToggleLabel.AbsolutePosition.Y + 1
+            )
+        end
+        UpdateModePos()
+        ToggleLabel:GetPropertyChangedSignal("AbsolutePosition"):Connect(UpdateModePos)
+    end
+
+    local ModeButtons = {}
+
+    for _, Mode in next, Modes do
+        local MB = {}
+        local Label = Phantom:CreateLabel({
+            Active         = false;
+            Size           = UDim2.new(1,0,0,15);
+            TextSize       = 13;
+            Text           = Mode;
+            ZIndex         = 16;
+            Parent         = ModeInner;
+        })
+        function MB:Select()
+            for _, b in next, ModeButtons do b:Deselect() end
+            KeyPicker.Mode         = Mode
+            Label.TextColor3       = Phantom.AccentColor
+            local Reg = Phantom.RegistryMap[Label]
+            if Reg then Reg.Properties.TextColor3 = "AccentColor" end
+            ModeOuter.Visible = false
+        end
+        function MB:Deselect()
+            KeyPicker.Mode         = nil
+            Label.TextColor3       = Phantom.FontColor
+            local Reg = Phantom.RegistryMap[Label]
+            if Reg then Reg.Properties.TextColor3 = "FontColor" end
+        end
+        Label.InputBegan:Connect(function(inp)
+            if inp.UserInputType == Enum.UserInputType.MouseButton1 then
+                MB:Select()
+                Phantom:AttemptSave()
+            end
+        end)
+        if Mode == KeyPicker.Mode then MB:Select() end
+        ModeButtons[Mode] = MB
+    end
+
+    function KeyPicker:Update()
+        if Info.NoUI then return end
+        local State = self:GetState()
+        ContainerLabel.Text    = string.format("[%s] %s (%s)", tostring(self.Value), Info.Text, tostring(self.Mode))
+        ContainerLabel.Visible = true
+        ContainerLabel.TextColor3 = State and Phantom.AccentColor or Phantom.FontColor
+        local Reg = Phantom.RegistryMap[ContainerLabel]
+        if Reg then Reg.Properties.TextColor3 = State and "AccentColor" or "FontColor" end
+
+        local YSize, XSize = 0, 0
+        for _, L in next, Phantom.KeybindContainer:GetChildren() do
+            if L:IsA("TextLabel") and L.Visible then
+                YSize = YSize + 18
+                if L.TextBounds.X > XSize then XSize = L.TextBounds.X end
+            end
+        end
+        if Phantom.KeybindFrame then
+            Phantom.KeybindFrame.Size = UDim2.new(0, math.max(XSize+10,210), 0, YSize+23)
+        end
+    end
+
+    function KeyPicker:GetState()
+        if self.Mode == "Always" then return true end
+        if self.Mode == "Hold" then
+            if self.Value == "None" then return false end
+            local k = self.Value
+            if k == "MB1" then return InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) end
+            if k == "MB2" then return InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) end
+            return InputService:IsKeyDown(Enum.KeyCode[k])
+        end
+        return self.Toggled
+    end
+
+    function KeyPicker:SetValue(Data)
+        local Key, Mode = Data[1], Data[2]
+        DisplayLabel.Text = Key
+        self.Value        = Key
+        if ModeButtons[Mode] then ModeButtons[Mode]:Select() end
+        self:Update()
+    end
+
+    function KeyPicker:OnChanged(Func)
+        self.Changed = Func
+        Func(self.Value)
+    end
+
+    function KeyPicker:DoClick()
+        if self.SyncToggleState then
+            local Parent = self._parent
+            if Parent and Parent.Type == "Toggle" then
+                Parent:SetValue(not Parent.Value)
+            end
+        end
+        Phantom:SafeCallback(self.Callback, self.Toggled)
+    end
+
+    -- Store parent reference for SyncToggleState
+    if self.Type == "Toggle" then
+        KeyPicker._parent = self
+        table.insert(self.Addons, KeyPicker)
+    end
+
+    PickOuter.InputBegan:Connect(function(Input)
+        if Input.UserInputType == Enum.UserInputType.MouseButton1
+        and not Phantom:MouseIsOverOpenedFrame() then
+            Picking = true
+            DisplayLabel.Text = ""
+            local dotText = ""
+            local dotConn; dotConn = RunService.Heartbeat:Connect(function()
+                dotText = dotText == "..." and "" or dotText .. "."
+                DisplayLabel.Text = dotText
+            end)
+            task.wait(0.2)
+            local Conn
+            Conn = InputService.InputBegan:Connect(function(Inp)
+                local Key
+                if Inp.UserInputType == Enum.UserInputType.Keyboard then
+                    Key = Inp.KeyCode.Name
+                elseif Inp.UserInputType == Enum.UserInputType.MouseButton1 then
+                    Key = "MB1"
+                elseif Inp.UserInputType == Enum.UserInputType.MouseButton2 then
+                    Key = "MB2"
+                end
+                if not Key then return end
+                dotConn:Disconnect()
+                Picking = false
+                DisplayLabel.Text = Key
+                KeyPicker.Value   = Key
+                Phantom:SafeCallback(KeyPicker.ChangedCallback, Inp.KeyCode or Inp.UserInputType)
+                Phantom:SafeCallback(KeyPicker.Changed, Inp.KeyCode or Inp.UserInputType)
+                Phantom:AttemptSave()
+                Conn:Disconnect()
+            end)
+        elseif Input.UserInputType == Enum.UserInputType.MouseButton2
+        and not Phantom:MouseIsOverOpenedFrame() then
+            ModeOuter.Visible = true
+        end
+    end)
+
+    Phantom:GiveSignal(InputService.InputBegan:Connect(function(Input)
+        if not Picking then
+            if KeyPicker.Mode == "Toggle" then
+                local k = KeyPicker.Value
+                if k == "MB1" or k == "MB2" then
+                    if (k=="MB1" and Input.UserInputType==Enum.UserInputType.MouseButton1)
+                    or (k=="MB2" and Input.UserInputType==Enum.UserInputType.MouseButton2) then
+                        KeyPicker.Toggled = not KeyPicker.Toggled
+                        KeyPicker:DoClick()
+                    end
+                elseif Input.UserInputType == Enum.UserInputType.Keyboard then
+                    if Input.KeyCode.Name == k then
+                        KeyPicker.Toggled = not KeyPicker.Toggled
+                        KeyPicker:DoClick()
+                    end
+                end
+            end
+            KeyPicker:Update()
+        end
+
+        if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+            if not Phantom:IsMouseOverFrame(ModeOuter) then
+                ModeOuter.Visible = false
+            end
+        end
+    end))
+
+    Phantom:GiveSignal(InputService.InputEnded:Connect(function()
+        if not Picking then KeyPicker:Update() end
+    end))
+
+    KeyPicker:Update()
+
+    Options[Idx] = KeyPicker
+    return KeyPicker
+end
+
+-- ── COLOR PICKER ─────────────────────────────────────────
+function BaseGroupbox:AddColorPicker(Idx, Info)
+    assert(Info.Default, "AddColorPicker: Missing `Default` Color3.")
+
+    local ToggleLabel = self.TextLabel
+
+    local ColorPicker = {
+        Value        = Info.Default;
+        Transparency = Info.Transparency or 0;
+        Type         = "ColorPicker";
+        Title        = type(Info.Title) == "string" and Info.Title or "Color Picker";
+        Callback     = Info.Callback or function() end;
+    }
+
+    function ColorPicker:SetHSVFromRGB(Color)
+        self.Hue, self.Sat, self.Vib = Color3.toHSV(Color)
+    end
+    ColorPicker:SetHSVFromRGB(ColorPicker.Value)
+
+    -- Small display frame (sits on the row label)
+    local DisplayFrame = Phantom:Create("Frame", {
+        BackgroundColor3 = ColorPicker.Value;
+        BorderColor3     = Phantom:GetDarkerColor(ColorPicker.Value);
+        BorderMode       = Enum.BorderMode.Inset;
+        Size             = UDim2.new(0,28,0,14);
+        ZIndex           = 6;
+        Parent           = ToggleLabel or self.Container;
+    })
+
+    -- Full color picker popup
+    local PickerOuter = Phantom:Create("Frame", {
+        Name     = "ColorPicker";
+        Size     = UDim2.fromOffset(230, Info.Transparency and 271 or 253);
+        Visible  = false;
+        ZIndex   = 15;
+        Parent   = ScreenGui;
+    })
+
+    DisplayFrame:GetPropertyChangedSignal("AbsolutePosition"):Connect(function()
+        PickerOuter.Position = UDim2.fromOffset(
+            DisplayFrame.AbsolutePosition.X,
+            DisplayFrame.AbsolutePosition.Y + 18
+        )
+    end)
+    PickerOuter.Position = UDim2.fromOffset(
+        DisplayFrame.AbsolutePosition.X,
+        DisplayFrame.AbsolutePosition.Y + 18
+    )
+
+    local PickerInner = Phantom:Create("Frame", {
+        BackgroundColor3 = Phantom.BackgroundColor;
+        BorderColor3     = Phantom.OutlineColor;
+        BorderMode       = Enum.BorderMode.Inset;
+        Size             = UDim2.new(1,0,1,0);
+        ZIndex           = 16;
+        Parent           = PickerOuter;
+    })
+    Phantom:AddToRegistry(PickerInner, { BackgroundColor3 = "BackgroundColor"; BorderColor3 = "OutlineColor" })
+
+    local AccentBar = Phantom:Create("Frame", {
+        BackgroundColor3 = Phantom.AccentColor;
+        BorderSizePixel  = 0;
+        Size             = UDim2.new(1,0,0,2);
+        ZIndex           = 17;
+        Parent           = PickerInner;
+    })
+    Phantom:AddToRegistry(AccentBar, { BackgroundColor3 = "AccentColor" })
+
+    Phantom:CreateLabel({
+        Size           = UDim2.new(1,0,0,14);
+        Position       = UDim2.fromOffset(5,5);
+        TextXAlignment = Enum.TextXAlignment.Left;
+        TextSize       = 13;
+        Text           = ColorPicker.Title;
+        TextWrapped    = false;
+        ZIndex         = 16;
+        Parent         = PickerInner;
+    })
+
+    -- Saturation/Value map
+    local SatVibOuter = Phantom:Create("Frame", {
+        BorderColor3 = Phantom.Black;
+        Position     = UDim2.new(0,4,0,25);
+        Size         = UDim2.new(0,200,0,200);
+        ZIndex       = 17;
+        Parent       = PickerInner;
+    })
+    local SatVibInner = Phantom:Create("Frame", {
+        BackgroundColor3 = Phantom.BackgroundColor;
+        BorderColor3     = Phantom.OutlineColor;
+        BorderMode       = Enum.BorderMode.Inset;
+        Size             = UDim2.new(1,0,1,0);
+        ZIndex           = 18;
+        Parent           = SatVibOuter;
+    })
+    Phantom:AddToRegistry(SatVibInner, { BackgroundColor3 = "BackgroundColor"; BorderColor3 = "OutlineColor" })
+
+    local SatVibMap = Phantom:Create("ImageLabel", {
+        BorderSizePixel = 0;
+        Size            = UDim2.new(1,0,1,0);
+        ZIndex          = 18;
+        Image           = "rbxassetid://4155801252";
+        Parent          = SatVibInner;
+    })
+    local Cursor = Phantom:Create("ImageLabel", {
+        AnchorPoint          = Vector2.new(0.5,0.5);
+        Size                 = UDim2.new(0,6,0,6);
+        BackgroundTransparency = 1;
+        Image                = "rbxassetid://9619665977";
+        ImageColor3          = Phantom.Black;
+        ZIndex               = 19;
+        Parent               = SatVibMap;
+    })
+    Phantom:Create("ImageLabel", {
+        Size                 = UDim2.new(0,4,0,4);
+        Position             = UDim2.new(0,1,0,1);
+        BackgroundTransparency = 1;
+        Image                = "rbxassetid://9619665977";
+        ZIndex               = 20;
+        Parent               = Cursor;
+    })
+
+    -- Hue bar
+    local HueOuter = Phantom:Create("Frame", {
+        BorderColor3 = Phantom.Black;
+        Position     = UDim2.new(0,208,0,25);
+        Size         = UDim2.new(0,15,0,200);
+        ZIndex       = 17;
+        Parent       = PickerInner;
+    })
+    local HueInner = Phantom:Create("Frame", {
+        BackgroundColor3 = Color3.new(1,1,1);
+        BorderSizePixel  = 0;
+        Size             = UDim2.new(1,0,1,0);
+        ZIndex           = 18;
+        Parent           = HueOuter;
+    })
+    local HueCursor = Phantom:Create("Frame", {
+        BackgroundColor3 = Color3.new(1,1,1);
+        AnchorPoint      = Vector2.new(0,0.5);
+        BorderColor3     = Phantom.Black;
+        Size             = UDim2.new(1,0,0,1);
+        ZIndex           = 18;
+        Parent           = HueInner;
+    })
+    local HueSeq = {}
+    for h = 0, 1, 0.1 do
+        table.insert(HueSeq, ColorSequenceKeypoint.new(h, Color3.fromHSV(h,1,1)))
+    end
+    Phantom:Create("UIGradient", {
+        Color    = ColorSequence.new(HueSeq);
+        Rotation = 90;
+        Parent   = HueInner;
+    })
+
+    -- Hex input
+    local HexBoxOuter = Phantom:Create("Frame", {
+        BorderColor3 = Phantom.Black;
+        Position     = UDim2.fromOffset(4,228);
+        Size         = UDim2.new(0.5,-6,0,20);
+        ZIndex       = 18;
+        Parent       = PickerInner;
+    })
+    local HexBoxInner = Phantom:Create("Frame", {
+        BackgroundColor3 = Phantom.MainColor;
+        BorderColor3     = Phantom.OutlineColor;
+        BorderMode       = Enum.BorderMode.Inset;
+        Size             = UDim2.new(1,0,1,0);
+        ZIndex           = 18;
+        Parent           = HexBoxOuter;
+    })
+    Phantom:Create("UIGradient", {
+        Color    = ColorSequence.new({
+            ColorSequenceKeypoint.new(0,Color3.new(1,1,1)),
+            ColorSequenceKeypoint.new(1,Color3.fromRGB(212,212,212)),
+        });
+        Rotation = 90;
+        Parent   = HexBoxInner;
+    })
+    local HexBox = Phantom:Create("TextBox", {
+        BackgroundTransparency = 1;
+        Position               = UDim2.new(0,5,0,0);
+        Size                   = UDim2.new(1,-5,1,0);
+        Font                   = Phantom.Font;
+        PlaceholderColor3      = Color3.fromRGB(80,80,80);
+        PlaceholderText        = "Hex color";
+        Text                   = "#FFFFFF";
+        TextColor3             = Phantom.FontColor;
+        TextSize               = 12;
+        TextStrokeTransparency = 0;
+        TextXAlignment         = Enum.TextXAlignment.Left;
+        ZIndex                 = 20;
+        Parent                 = HexBoxInner;
+    })
+    Phantom:ApplyTextStroke(HexBox)
+    Phantom:AddToRegistry(HexBox, { TextColor3 = "FontColor" })
+    Phantom:AddToRegistry(HexBoxInner, { BackgroundColor3 = "MainColor"; BorderColor3 = "OutlineColor" })
+
+    function ColorPicker:Display()
+        self.Value = Color3.fromHSV(self.Hue, self.Sat, self.Vib)
+        SatVibMap.BackgroundColor3 = Color3.fromHSV(self.Hue, 1, 1)
+        DisplayFrame.BackgroundColor3 = self.Value
+        DisplayFrame.BackgroundTransparency = self.Transparency
+        DisplayFrame.BorderColor3 = Phantom:GetDarkerColor(self.Value)
+        Cursor.Position    = UDim2.new(self.Sat,0, 1-self.Vib, 0)
+        HueCursor.Position = UDim2.new(0,0, self.Hue, 0)
+        HexBox.Text        = "#" .. self.Value:ToHex():upper()
+        Phantom:SafeCallback(self.Callback, self.Value)
+        Phantom:SafeCallback(self.Changed,  self.Value)
+    end
+
+    function ColorPicker:Show()
+        for Frame in next, Phantom.OpenedFrames do
+            if Frame.Name == "ColorPicker" then
+                Frame.Visible = false
+                Phantom.OpenedFrames[Frame] = nil
+            end
+        end
+        PickerOuter.Visible = true
+        Phantom.OpenedFrames[PickerOuter] = true
+    end
+
+    function ColorPicker:Hide()
+        PickerOuter.Visible = false
+        Phantom.OpenedFrames[PickerOuter] = nil
+    end
+
+    function ColorPicker:SetValueRGB(Color, Trans)
+        self.Transparency = Trans or 0
+        self:SetHSVFromRGB(Color)
+        self:Display()
+    end
+
+    function ColorPicker:SetValue(HSV, Trans)
+        self.Transparency = Trans or 0
+        self:SetHSVFromRGB(Color3.fromHSV(HSV[1],HSV[2],HSV[3]))
+        self:Display()
+    end
+
+    function ColorPicker:OnChanged(Func)
+        self.Changed = Func
+        Func(self.Value)
+    end
+
+    HexBox.FocusLost:Connect(function(enter)
+        if enter then
+            local ok, col = pcall(Color3.fromHex, HexBox.Text)
+            if ok and typeof(col) == "Color3" then
+                ColorPicker.Hue, ColorPicker.Sat, ColorPicker.Vib = Color3.toHSV(col)
+            end
+        end
+        ColorPicker:Display()
+    end)
+
+    SatVibMap.InputBegan:Connect(function(Input)
+        if Input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+        while InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
+            local minX = SatVibMap.AbsolutePosition.X
+            local maxX = minX + SatVibMap.AbsoluteSize.X
+            local minY = SatVibMap.AbsolutePosition.Y
+            local maxY = minY + SatVibMap.AbsoluteSize.Y
+            ColorPicker.Sat = (math.clamp(Mouse.X,minX,maxX)-minX)/(maxX-minX)
+            ColorPicker.Vib = 1-((math.clamp(Mouse.Y,minY,maxY)-minY)/(maxY-minY))
+            ColorPicker:Display()
+            RenderStepped:Wait()
+        end
+        Phantom:AttemptSave()
+    end)
+
+    HueInner.InputBegan:Connect(function(Input)
+        if Input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+        while InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
+            local minY = HueInner.AbsolutePosition.Y
+            local maxY = minY + HueInner.AbsoluteSize.Y
+            ColorPicker.Hue = (math.clamp(Mouse.Y,minY,maxY)-minY)/(maxY-minY)
+            ColorPicker:Display()
+            RenderStepped:Wait()
+        end
+        Phantom:AttemptSave()
+    end)
+
+    DisplayFrame.InputBegan:Connect(function(Input)
+        if Input.UserInputType == Enum.UserInputType.MouseButton1
+        and not Phantom:MouseIsOverOpenedFrame() then
+            if PickerOuter.Visible then ColorPicker:Hide() else ColorPicker:Show() end
+        end
+    end)
+
+    Phantom:GiveSignal(InputService.InputBegan:Connect(function(Input)
+        if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+            local p, s = PickerOuter.AbsolutePosition, PickerOuter.AbsoluteSize
+            if Mouse.X < p.X or Mouse.X > p.X+s.X
+            or Mouse.Y < p.Y-21 or Mouse.Y > p.Y+s.Y then
+                ColorPicker:Hide()
+            end
+        end
+    end))
+
+    ColorPicker:Display()
+    ColorPicker.DisplayFrame = DisplayFrame
+
+    Options[Idx] = ColorPicker
+    return ColorPicker
+end
+
+-- ── DEPENDENCY BOX ────────────────────────────────────────
+function BaseGroupbox:AddDependencyBox()
+    local Depbox = { Dependencies = {} }
+
+    local Holder = Phantom:Create("Frame", {
+        BackgroundTransparency = 1;
+        Size                   = UDim2.new(1,0,0,0);
+        Visible                = false;
+        Parent                 = self.Container;
+    })
+    local Frame = Phantom:Create("Frame", {
+        BackgroundTransparency = 1;
+        Size                   = UDim2.new(1,0,1,0);
+        Parent                 = Holder;
+    })
+    local Layout = Phantom:Create("UIListLayout", {
+        FillDirection = Enum.FillDirection.Vertical;
+        SortOrder     = Enum.SortOrder.LayoutOrder;
+        Parent        = Frame;
+    })
+
+    function Depbox:Resize()
+        Holder.Size = UDim2.new(1,0,0,Layout.AbsoluteContentSize.Y)
+        if self._parent then self._parent:Resize() end
+    end
+
+    function Depbox:Update()
+        for _, Dep in next, self.Dependencies do
+            local Elem, Val = Dep[1], Dep[2]
+            if Elem.Type == "Toggle" and Elem.Value ~= Val then
+                Holder.Visible = false
+                self:Resize()
+                return
+            end
+        end
+        Holder.Visible = true
+        self:Resize()
+    end
+
+    function Depbox:SetupDependencies(Deps)
+        for _, D in next, Deps do
+            assert(type(D) == "table",   "SetupDependencies: Dependency must be a table.")
+            assert(D[1],                 "SetupDependencies: Missing element.")
+            assert(D[2] ~= nil,          "SetupDependencies: Missing value.")
+        end
+        self.Dependencies = Deps
+        self:Update()
+    end
+
+    Layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        Depbox:Resize()
+    end)
+    Holder:GetPropertyChangedSignal("Visible"):Connect(function()
+        Depbox:Resize()
+    end)
+
+    Depbox.Container = Frame
+    Depbox._parent   = self
+    setmetatable(Depbox, BaseGroupbox)
+
+    table.insert(Phantom.DependencyBoxes, Depbox)
+    return Depbox
+end
+
+-- ── RESIZE ────────────────────────────────────────────────
+-- Default impl — overridden per groupbox instance
+function BaseGroupbox:Resize()
+    -- overridden by groupbox creation
+end
+
+-- ============================================================
+-- KEYBIND DISPLAY FRAME
+-- ============================================================
+do
+    local KbOuter = Phantom:Create("Frame", {
+        AnchorPoint  = Vector2.new(0,0.5);
+        BorderColor3 = Phantom.Black;
+        Position     = UDim2.new(0,10,0.5,0);
+        Size         = UDim2.new(0,210,0,20);
+        Visible      = false;
+        ZIndex       = 100;
+        Parent       = ScreenGui;
+    })
+    local KbInner = Phantom:Create("Frame", {
+        BackgroundColor3 = Phantom.MainColor;
+        BorderColor3     = Phantom.OutlineColor;
+        BorderMode       = Enum.BorderMode.Inset;
+        Size             = UDim2.new(1,0,1,0);
+        ZIndex           = 101;
+        Parent           = KbOuter;
+    })
+    Phantom:AddToRegistry(KbInner, { BackgroundColor3 = "MainColor"; BorderColor3 = "OutlineColor" }, true)
+
+    local KbAccent = Phantom:Create("Frame", {
+        BackgroundColor3 = Phantom.AccentColor;
+        BorderSizePixel  = 0;
+        Size             = UDim2.new(1,0,0,2);
+        ZIndex           = 102;
+        Parent           = KbInner;
+    })
+    Phantom:AddToRegistry(KbAccent, { BackgroundColor3 = "AccentColor" }, true)
+
+    Phantom:CreateLabel({
+        Size           = UDim2.new(1,0,0,20);
+        Position       = UDim2.fromOffset(5,2);
+        TextXAlignment = Enum.TextXAlignment.Left;
+        Text           = "Keybinds";
+        ZIndex         = 104;
+        Parent         = KbInner;
+    })
+
+    local KbContainer = Phantom:Create("Frame", {
+        BackgroundTransparency = 1;
+        Size                   = UDim2.new(1,0,1,-20);
+        Position               = UDim2.new(0,0,0,20);
+        ZIndex                 = 1;
+        Parent                 = KbInner;
+    })
+    Phantom:Create("UIListLayout", {
+        FillDirection = Enum.FillDirection.Vertical;
+        SortOrder     = Enum.SortOrder.LayoutOrder;
+        Parent        = KbContainer;
+    })
+    Phantom:Create("UIPadding", {
+        PaddingLeft = UDim.new(0,5);
+        Parent      = KbContainer;
+    })
+
+    Phantom.KeybindFrame     = KbOuter
+    Phantom.KeybindContainer = KbContainer
+    Phantom:MakeDraggable(KbOuter)
+end
+
+-- ============================================================
+-- WINDOW
+-- ============================================================
+function Phantom:CreateWindow(Config)
+    if type(Config) ~= "table" then
+        Config = { Title = tostring(Config) }
+    end
+
+    Config.Title         = type(Config.Title) == "string" and Config.Title or "PHANTOM"
+    Config.TabPadding    = type(Config.TabPadding) == "number" and Config.TabPadding or 0
+    Config.MenuFadeTime  = type(Config.MenuFadeTime) == "number" and Config.MenuFadeTime or 0.2
+    Config.Position      = typeof(Config.Position) == "UDim2" and Config.Position or UDim2.fromOffset(180,50)
+    Config.Size          = typeof(Config.Size) == "UDim2" and Config.Size or UDim2.fromOffset(560,620)
+
+    if Config.Center then
+        Config.AnchorPoint = Vector2.new(0.5,0.5)
+        Config.Position    = UDim2.fromScale(0.5,0.5)
+    end
+
+    local Window = { Tabs = {} }
+
+    -- Outer frame
+    local Outer = self:Create("Frame", {
+        AnchorPoint      = Config.AnchorPoint or Vector2.zero;
+        BackgroundColor3 = self.Black;
+        BorderSizePixel  = 0;
+        Position         = Config.Position;
+        Size             = Config.Size;
+        Visible          = false;
+        ZIndex           = 1;
+        Parent           = ScreenGui;
+    })
+    table.insert(self._windows, Outer)
+    self:MakeDraggable(Outer, 28)
+
+    local Inner = self:Create("Frame", {
+        BackgroundColor3 = self.MainColor;
+        BorderColor3     = self.AccentColor;
+        BorderMode       = Enum.BorderMode.Inset;
+        Position         = UDim2.new(0,1,0,1);
+        Size             = UDim2.new(1,-2,1,-2);
+        ZIndex           = 1;
+        Parent           = Outer;
+    })
+    self:AddToRegistry(Inner, { BackgroundColor3 = "MainColor"; BorderColor3 = "AccentColor" })
+
+    -- Title
+    local TitleLabel = self:CreateLabel({
+        Position       = UDim2.new(0,8,0,0);
+        Size           = UDim2.new(1,0,0,26);
+        Text           = Config.Title;
+        TextSize       = 14;
+        TextXAlignment = Enum.TextXAlignment.Left;
+        ZIndex         = 1;
+        Parent         = Inner;
+    })
+
+    -- Main section
+    local MainOuter = self:Create("Frame", {
+        BackgroundColor3 = self.BackgroundColor;
+        BorderColor3     = self.OutlineColor;
+        Position         = UDim2.new(0,8,0,26);
+        Size             = UDim2.new(1,-16,1,-34);
+        ZIndex           = 1;
+        Parent           = Inner;
+    })
+    self:AddToRegistry(MainOuter, { BackgroundColor3 = "BackgroundColor"; BorderColor3 = "OutlineColor" })
+
+    local MainInner = self:Create("Frame", {
+        BackgroundColor3 = self.BackgroundColor;
+        BorderColor3     = self.Black;
+        BorderMode       = Enum.BorderMode.Inset;
+        Size             = UDim2.new(1,0,1,0);
+        ZIndex           = 1;
+        Parent           = MainOuter;
+    })
+    self:AddToRegistry(MainInner, { BackgroundColor3 = "BackgroundColor" })
+
+    -- Tab button row
+    local TabArea = self:Create("Frame", {
+        BackgroundTransparency = 1;
+        Position               = UDim2.new(0,8,0,8);
+        Size                   = UDim2.new(1,-16,0,22);
+        ZIndex                 = 1;
+        Parent                 = MainInner;
+    })
+    self:Create("UIListLayout", {
+        Padding          = UDim.new(0, Config.TabPadding);
+        FillDirection    = Enum.FillDirection.Horizontal;
+        SortOrder        = Enum.SortOrder.LayoutOrder;
+        Parent           = TabArea;
+    })
+
+    -- Tab container
+    local TabContainer = self:Create("Frame", {
+        BackgroundColor3 = self.MainColor;
+        BorderColor3     = self.OutlineColor;
+        Position         = UDim2.new(0,8,0,31);
+        Size             = UDim2.new(1,-16,1,-39);
+        ZIndex           = 2;
+        Parent           = MainInner;
+    })
+    self:AddToRegistry(TabContainer, { BackgroundColor3 = "MainColor"; BorderColor3 = "OutlineColor" })
+
+    function Window:SetWindowTitle(Title)
+        TitleLabel.Text = Title
+    end
+
+    -- ── ADD TAB ─────────────────────────────────────────
+    function Window:AddTab(Name)
+        local Tab = { Groupboxes = {}; Tabboxes = {} }
+
+        local BtnW = Phantom:GetTextBounds(Name, Phantom.Font, 14)
+
+        local TabBtn = Phantom:Create("Frame", {
+            BackgroundColor3 = Phantom.BackgroundColor;
+            BorderColor3     = Phantom.OutlineColor;
+            Size             = UDim2.new(0, BtnW+14, 1, 0);
+            ZIndex           = 1;
+            Parent           = TabArea;
+        })
+        Phantom:AddToRegistry(TabBtn, { BackgroundColor3 = "BackgroundColor"; BorderColor3 = "OutlineColor" })
+
+        local TabBtnLabel = Phantom:CreateLabel({
+            Size           = UDim2.new(1,0,1,-1);
+            Text           = Name;
+            TextSize       = 14;
+            ZIndex         = 1;
+            Parent         = TabBtn;
+        })
+
+        local Blocker = Phantom:Create("Frame", {
+            BackgroundColor3     = Phantom.MainColor;
+            BorderSizePixel      = 0;
+            Position             = UDim2.new(0,0,1,0);
+            Size                 = UDim2.new(1,0,0,1);
+            BackgroundTransparency = 1;
+            ZIndex               = 3;
+            Parent               = TabBtn;
+        })
+        Phantom:AddToRegistry(Blocker, { BackgroundColor3 = "MainColor" })
+
+        local TabFrame = Phantom:Create("Frame", {
+            Name                 = "TabFrame";
+            BackgroundTransparency = 1;
+            Size                 = UDim2.new(1,0,1,0);
+            Visible              = false;
+            ZIndex               = 2;
+            Parent               = TabContainer;
+        })
+
+        local function MakeSide(xPos, xSize)
+            local S = Phantom:Create("ScrollingFrame", {
+                BackgroundTransparency = 1;
+                BorderSizePixel        = 0;
+                Position               = UDim2.new(xPos, 0, 0, 8);
+                Size                   = UDim2.new(xSize, -12, 1, -16);
+                CanvasSize             = UDim2.new(0,0,0,0);
+                BottomImage            = "";
+                TopImage               = "";
+                ScrollBarThickness     = 0;
+                ZIndex                 = 2;
+                Parent                 = TabFrame;
+            })
+            Phantom:Create("UIListLayout", {
+                Padding              = UDim.new(0,8);
+                FillDirection        = Enum.FillDirection.Vertical;
+                SortOrder            = Enum.SortOrder.LayoutOrder;
+                HorizontalAlignment  = Enum.HorizontalAlignment.Center;
+                Parent               = S;
+            })
+            S:FindFirstChildOfClass("UIListLayout"):GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+                S.CanvasSize = UDim2.fromOffset(0, S:FindFirstChildOfClass("UIListLayout").AbsoluteContentSize.Y)
+            end)
+            return S
+        end
+
+        local LeftSide  = MakeSide(0,   0.5)
+        local RightSide = MakeSide(0.5, 0.5)
+
+        function Tab:ShowTab()
+            for _, T in next, Window.Tabs do T:HideTab() end
+            Blocker.BackgroundTransparency = 0
+            TabBtn.BackgroundColor3 = Phantom.MainColor
+            Phantom.RegistryMap[TabBtn].Properties.BackgroundColor3 = "MainColor"
+            TabFrame.Visible = true
+        end
+
+        function Tab:HideTab()
+            Blocker.BackgroundTransparency = 1
+            TabBtn.BackgroundColor3 = Phantom.BackgroundColor
+            Phantom.RegistryMap[TabBtn].Properties.BackgroundColor3 = "BackgroundColor"
+            TabFrame.Visible = false
+        end
+
+        -- ── ADD GROUPBOX ────────────────────────────────
+        local function AddGroupbox(Info)
+            local GB = {}
+
+            local Side = Info.Side == 1 and LeftSide or RightSide
+
+            local BoxOuter = Phantom:Create("Frame", {
+                BackgroundColor3 = Phantom.BackgroundColor;
+                BorderColor3     = Phantom.OutlineColor;
+                BorderMode       = Enum.BorderMode.Inset;
+                Size             = UDim2.new(1,0,0,40);
+                ZIndex           = 2;
+                Parent           = Side;
+            })
+            Phantom:AddToRegistry(BoxOuter, { BackgroundColor3 = "BackgroundColor"; BorderColor3 = "OutlineColor" })
+
+            local BoxInner = Phantom:Create("Frame", {
+                BackgroundColor3 = Phantom.BackgroundColor;
+                BorderColor3     = Phantom.Black;
+                Size             = UDim2.new(1,-2,1,-2);
+                Position         = UDim2.new(0,1,0,1);
+                ZIndex           = 4;
+                Parent           = BoxOuter;
+            })
+            Phantom:AddToRegistry(BoxInner, { BackgroundColor3 = "BackgroundColor" })
+
+            local Accent = Phantom:Create("Frame", {
+                BackgroundColor3 = Phantom.AccentColor;
+                BorderSizePixel  = 0;
+                Size             = UDim2.new(1,0,0,2);
+                ZIndex           = 5;
+                Parent           = BoxInner;
+            })
+            Phantom:AddToRegistry(Accent, { BackgroundColor3 = "AccentColor" })
+
+            Phantom:CreateLabel({
+                Size           = UDim2.new(1,0,0,18);
+                Position       = UDim2.new(0,4,0,2);
+                TextSize       = 13;
+                Text           = Info.Name;
+                TextXAlignment = Enum.TextXAlignment.Left;
+                ZIndex         = 5;
+                Parent         = BoxInner;
+            })
+
+            local Container = Phantom:Create("Frame", {
+                BackgroundTransparency = 1;
+                Position               = UDim2.new(0,4,0,20);
+                Size                   = UDim2.new(1,-4,1,-20);
+                ZIndex                 = 1;
+                Parent                 = BoxInner;
+            })
+            Phantom:Create("UIListLayout", {
+                FillDirection = Enum.FillDirection.Vertical;
+                SortOrder     = Enum.SortOrder.LayoutOrder;
+                Parent        = Container;
+            })
+
+            function GB:Resize()
+                local H = 0
+                for _, E in next, self.Container:GetChildren() do
+                    if not E:IsA("UIListLayout") and E.Visible then
+                        H = H + E.Size.Y.Offset
+                    end
+                end
+                BoxOuter.Size = UDim2.new(1,0,0, 22+H+4)
+            end
+
+            GB.Container = Container
+            setmetatable(GB, BaseGroupbox)
+
+            GB:AddBlank(3)
+            GB:Resize()
+
+            Tab.Groupboxes[Info.Name] = GB
+            return GB
+        end
+
+        function Tab:AddLeftGroupbox(Name)
+            return AddGroupbox({ Side=1, Name=Name })
+        end
+        function Tab:AddRightGroupbox(Name)
+            return AddGroupbox({ Side=2, Name=Name })
+        end
+
+        -- ── ADD TABBOX ──────────────────────────────────
+        local function AddTabbox(Info)
+            local Tabbox = { Tabs = {} }
+            local Side   = Info.Side == 1 and LeftSide or RightSide
+
+            local BoxOuter = Phantom:Create("Frame", {
+                BackgroundColor3 = Phantom.BackgroundColor;
+                BorderColor3     = Phantom.OutlineColor;
+                BorderMode       = Enum.BorderMode.Inset;
+                Size             = UDim2.new(1,0,0,0);
+                ZIndex           = 2;
+                Parent           = Side;
+            })
+            Phantom:AddToRegistry(BoxOuter, { BackgroundColor3 = "BackgroundColor"; BorderColor3 = "OutlineColor" })
+
+            local BoxInner = Phantom:Create("Frame", {
+                BackgroundColor3 = Phantom.BackgroundColor;
+                BorderColor3     = Phantom.Black;
+                Size             = UDim2.new(1,-2,1,-2);
+                Position         = UDim2.new(0,1,0,1);
+                ZIndex           = 4;
+                Parent           = BoxOuter;
+            })
+            Phantom:AddToRegistry(BoxInner, { BackgroundColor3 = "BackgroundColor" })
+
+            local Accent = Phantom:Create("Frame", {
+                BackgroundColor3 = Phantom.AccentColor;
+                BorderSizePixel  = 0;
+                Size             = UDim2.new(1,0,0,2);
+                ZIndex           = 10;
+                Parent           = BoxInner;
+            })
+            Phantom:AddToRegistry(Accent, { BackgroundColor3 = "AccentColor" })
+
+            local BtnRow = Phantom:Create("Frame", {
+                BackgroundTransparency = 1;
+                Position               = UDim2.new(0,0,0,1);
+                Size                   = UDim2.new(1,0,0,18);
+                ZIndex                 = 5;
+                Parent                 = BoxInner;
+            })
+            Phantom:Create("UIListLayout", {
+                FillDirection        = Enum.FillDirection.Horizontal;
+                HorizontalAlignment  = Enum.HorizontalAlignment.Left;
+                SortOrder            = Enum.SortOrder.LayoutOrder;
+                Parent               = BtnRow;
+            })
+
+            function Tabbox:AddTab(TName)
+                local TTab = {}
+
+                local Btn = Phantom:Create("Frame", {
+                    BackgroundColor3 = Phantom.MainColor;
+                    BorderColor3     = Phantom.Black;
+                    Size             = UDim2.new(0.5,0,1,0);
+                    ZIndex           = 6;
+                    Parent           = BtnRow;
+                })
+                Phantom:AddToRegistry(Btn, { BackgroundColor3 = "MainColor" })
+
+                Phantom:CreateLabel({
+                    Size     = UDim2.new(1,0,1,0);
+                    TextSize = 13;
+                    Text     = TName;
+                    ZIndex   = 7;
+                    Parent   = Btn;
+                })
+
+                local Block = Phantom:Create("Frame", {
+                    BackgroundColor3 = Phantom.BackgroundColor;
+                    BorderSizePixel  = 0;
+                    Position         = UDim2.new(0,0,1,0);
+                    Size             = UDim2.new(1,0,0,1);
+                    Visible          = false;
+                    ZIndex           = 9;
+                    Parent           = Btn;
+                })
+                Phantom:AddToRegistry(Block, { BackgroundColor3 = "BackgroundColor" })
+
+                local Cont = Phantom:Create("Frame", {
+                    BackgroundTransparency = 1;
+                    Position               = UDim2.new(0,4,0,20);
+                    Size                   = UDim2.new(1,-4,1,-20);
+                    ZIndex                 = 1;
+                    Visible                = false;
+                    Parent                 = BoxInner;
+                })
+                Phantom:Create("UIListLayout", {
+                    FillDirection = Enum.FillDirection.Vertical;
+                    SortOrder     = Enum.SortOrder.LayoutOrder;
+                    Parent        = Cont;
+                })
+
+                function TTab:Show()
+                    for _, T in next, Tabbox.Tabs do T:Hide() end
+                    Cont.Visible  = true
+                    Block.Visible = true
+                    Btn.BackgroundColor3 = Phantom.BackgroundColor
+                    Phantom.RegistryMap[Btn].Properties.BackgroundColor3 = "BackgroundColor"
+                    TTab:Resize()
+                end
+
+                function TTab:Hide()
+                    Cont.Visible  = false
+                    Block.Visible = false
+                    Btn.BackgroundColor3 = Phantom.MainColor
+                    Phantom.RegistryMap[Btn].Properties.BackgroundColor3 = "MainColor"
+                end
+
+                function TTab:Resize()
+                    local Count = 0
+                    for _ in next, Tabbox.Tabs do Count = Count + 1 end
+                    for _, B in next, BtnRow:GetChildren() do
+                        if not B:IsA("UIListLayout") then
+                            B.Size = UDim2.new(1/Count,0,1,0)
+                        end
+                    end
+                    if not Cont.Visible then return end
+                    local H = 0
+                    for _, E in next, TTab.Container:GetChildren() do
+                        if not E:IsA("UIListLayout") and E.Visible then
+                            H = H + E.Size.Y.Offset
+                        end
+                    end
+                    BoxOuter.Size = UDim2.new(1,0,0,22+H+4)
+                end
+
+                Btn.InputBegan:Connect(function(Input)
+                    if Input.UserInputType == Enum.UserInputType.MouseButton1
+                    and not Phantom:MouseIsOverOpenedFrame() then
+                        TTab:Show()
+                    end
+                end)
+
+                TTab.Container = Cont
+                Tabbox.Tabs[TName] = TTab
+                setmetatable(TTab, BaseGroupbox)
+                TTab:AddBlank(3)
+                TTab:Resize()
+
+                -- Show first tab automatically
+                if #BtnRow:GetChildren() == 2 then TTab:Show() end
+
+                return TTab
+            end
+
+            Tab.Tabboxes[Info.Name or ""] = Tabbox
+            return Tabbox
+        end
+
+        function Tab:AddLeftTabbox(Name)
+            return AddTabbox({ Name=Name, Side=1 })
+        end
+        function Tab:AddRightTabbox(Name)
+            return AddTabbox({ Name=Name, Side=2 })
+        end
+
+        TabBtn.InputBegan:Connect(function(Input)
+            if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+                Tab:ShowTab()
+            end
+        end)
+
+        if #TabContainer:GetChildren() == 1 then Tab:ShowTab() end
+
+        Window.Tabs[Name] = Tab
+        return Tab
+    end
+
+    -- ── TOGGLE (show/hide with fade) ─────────────────────
+    local TransparencyCache = {}
+    local Toggled           = false
+    local Fading            = false
+
+    function self:Toggle()
+        if Fading then return end
+        local FadeTime = Config.MenuFadeTime
+        Fading  = true
+        Toggled = not Toggled
+
+        if Toggled then
+            Outer.Visible = true
+        end
+
+        for _, Desc in next, Outer:GetDescendants() do
+            local Props = {}
+            if Desc:IsA("ImageLabel") or Desc:IsA("ImageButton") then
+                table.insert(Props, "ImageTransparency")
+                table.insert(Props, "BackgroundTransparency")
+            elseif Desc:IsA("TextLabel") or Desc:IsA("TextBox") or Desc:IsA("TextButton") then
+                table.insert(Props, "TextTransparency")
+                table.insert(Props, "BackgroundTransparency")
+            elseif Desc:IsA("Frame") or Desc:IsA("ScrollingFrame") then
+                table.insert(Props, "BackgroundTransparency")
+            elseif Desc:IsA("UIStroke") then
+                table.insert(Props, "Transparency")
+            end
+
+            local Cache = TransparencyCache[Desc]
+            if not Cache then Cache = {}; TransparencyCache[Desc] = Cache end
+
+            for _, Prop in next, Props do
+                if not Cache[Prop] then Cache[Prop] = Desc[Prop] end
+                if Cache[Prop] == 1 then continue end
+                TweenService:Create(Desc, TweenInfo.new(FadeTime, Enum.EasingStyle.Linear), {
+                    [Prop] = Toggled and Cache[Prop] or 1
+                }):Play()
+            end
+        end
+
+        task.wait(FadeTime)
+        Outer.Visible = Toggled
+        Fading        = false
+    end
+
+    -- Global toggle keybind
+    Phantom:GiveSignal(InputService.InputBegan:Connect(function(Input, Processed)
+        if type(Phantom.ToggleKeybind) == "table" and Phantom.ToggleKeybind.Type == "KeyPicker" then
+            if Input.UserInputType == Enum.UserInputType.Keyboard
+            and Input.KeyCode.Name == Phantom.ToggleKeybind.Value then
+                task.spawn(function() Phantom:Toggle() end)
+            end
+        elseif Input.KeyCode == Enum.KeyCode.RightControl
+        or (Input.KeyCode == Enum.KeyCode.RightShift and not Processed) then
+            task.spawn(function() Phantom:Toggle() end)
+        end
+    end))
+
+    -- Store reference for Toggle
+    Phantom._currentWindow = Window
+    function Phantom:Toggle()
+        if Window then
+            local fn = Window._toggle
+            if fn then fn() end
+        end
+    end
+    Window._toggle = function()
+        if Fading then return end
+        local FadeTime = Config.MenuFadeTime
+        Fading  = true
+        Toggled = not Toggled
+        if Toggled then Outer.Visible = true end
+        for _, Desc in next, Outer:GetDescendants() do
+            local Props = {}
+            if Desc:IsA("ImageLabel") then table.insert(Props,"ImageTransparency"); table.insert(Props,"BackgroundTransparency")
+            elseif Desc:IsA("TextLabel") or Desc:IsA("TextBox") then table.insert(Props,"TextTransparency")
+            elseif Desc:IsA("Frame") or Desc:IsA("ScrollingFrame") then table.insert(Props,"BackgroundTransparency")
+            elseif Desc:IsA("UIStroke") then table.insert(Props,"Transparency") end
+            local Cache = TransparencyCache[Desc]
+            if not Cache then Cache = {}; TransparencyCache[Desc] = Cache end
+            for _, Prop in next, Props do
+                if not Cache[Prop] then Cache[Prop] = Desc[Prop] end
+                if Cache[Prop] == 1 then continue end
+                TweenService:Create(Desc, TweenInfo.new(FadeTime,Enum.EasingStyle.Linear),{
+                    [Prop] = Toggled and Cache[Prop] or 1
+                }):Play()
+            end
+        end
+        task.wait(FadeTime)
+        Outer.Visible = Toggled
+        Fading = false
+    end
+
+    if Config.AutoShow then task.spawn(Window._toggle) end
+
+    Window.Holder = Outer
+    return Window
+end
+
+-- ============================================================
+-- EXPOSE & RETURN
+-- ============================================================
+getgenv().PhantomUI = Phantom
+return Phantom
