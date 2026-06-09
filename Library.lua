@@ -441,6 +441,18 @@ local function createCard(column,title,window)
         function result:AddKeyPicker(index,info) return api:AddKeybind(index,info) end
         return result
     end
+    function api:AddStat(label,value,wrap)
+        local r=row(wrap and 48 or 32)
+        local key=text(r,tostring(label or ""),10,L.Colors.Muted,true);key.Size=UDim2.new(0.42,0,1,-1)
+        local resultText=text(r,tostring(value or ""),11,L.Colors.Text,true);resultText.Position=UDim2.new(0.42,10,0,wrap and 5 or 0);resultText.Size=UDim2.new(0.58,-10,1,wrap and -6 or -1)
+        resultText.TextXAlignment=Enum.TextXAlignment.Right;resultText.TextWrapped=not not wrap;resultText.TextYAlignment=wrap and Enum.TextYAlignment.Top or Enum.TextYAlignment.Center
+        local line=bind(new("Frame",{AnchorPoint=Vector2.new(0,1),Position=UDim2.new(0,0,1,0),Size=UDim2.new(1,0,0,1),BackgroundTransparency=0.88},r),{BackgroundColor3="Outline"})
+        local result={Root=r}
+        function result:SetValue(v) resultText.Text=tostring(v or "") end
+        function result:SetLabel(v) key.Text=tostring(v or "") end
+        function result:SetText(v) resultText.Text=tostring(v or "") end
+        return result
+    end
     function api:AddDivider()
         local r=row(9)
         local line=bind(new("Frame",{AnchorPoint=Vector2.new(0,0.5),Position=UDim2.fromScale(0,0.5),Size=UDim2.new(1,0,0,1),BackgroundTransparency=0.72},r),{BackgroundColor3="Muted"})
@@ -857,7 +869,7 @@ function L:CreateWindow(config)
         end
         function tab:AddLeftTabbox() return addTabbox("Left") end
         function tab:AddRightTabbox() return addTabbox("Right") end
-        local methods={"AddParagraph","AddLabel","AddDivider","AddButton","AddToggle","AddSlider","AddDropdown","AddInput","AddKeybind","AddKeyPicker","AddColorpicker","AddColorPicker","AddDependencyBox"}
+        local methods={"AddParagraph","AddLabel","AddStat","AddDivider","AddButton","AddToggle","AddSlider","AddDropdown","AddInput","AddKeybind","AddKeyPicker","AddColorpicker","AddColorPicker","AddDependencyBox"}
         for _,method in ipairs(methods) do tab[method]=function(self,...) if not self.DefaultCard then self.DefaultCard=self:AddSection("") end return self.DefaultCard[method](self.DefaultCard,...) end end
         window.Tabs[title]=tab;table.insert(window.TabOrder,tab);if info.Settings then window.SettingsTab=tab end;if #window.TabOrder==1 then tab:Show() end;return tab
     end
