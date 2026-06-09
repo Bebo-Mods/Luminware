@@ -1,3 +1,11 @@
+--[[
+    Luminware complete example
+
+    This file demonstrates the recommended startup flow, dashboard,
+    controls, layouts, visual previews, state APIs, and settings addons.
+]]
+
+-- Dependencies ----------------------------------------------------------------
 local base="https://raw.githubusercontent.com/Bebo-Mods/Luminware/main/"
 local Library=loadstring(game:HttpGet(base.."Library.lua"))()
 local Icons=loadstring(game:HttpGet(base.."Icons.lua"))()
@@ -5,20 +13,26 @@ Library:SetIcons(Icons)
 local SaveManager=loadstring(game:HttpGet(base.."addons/SaveManager.lua"))()
 local ThemeManager=loadstring(game:HttpGet(base.."addons/ThemeManager.lua"))()
 local InterfaceManager=loadstring(game:HttpGet(base.."addons/InterfaceManager.lua"))()
+-- Boot configuration -----------------------------------------------------------
+-- These globals may be set before loading Example.lua to customize startup.
 local Global=typeof(getgenv)=="function" and getgenv() or {}
 local BootMobile=Global.LuminwareMobileMode
 if BootMobile==nil then BootMobile=game:GetService("UserInputService").TouchEnabled end
 local BootSmallIcon=Global.LuminwareSmallIcon~=false
 
+-- Startup loader ---------------------------------------------------------------
+-- The main window starts hidden and is revealed only after Loader:Complete.
 local Loader=Library:CreateLoader({Title="Luminware",Subtitle="Preparing concept interface",MinimumDuration=3})
 Loader:SetProgress(0.12,"Creating responsive window")
 task.wait(0.1)
 
+-- Window and navigation --------------------------------------------------------
 local Window=Library:CreateWindow({
     Size=UDim2.fromOffset(900,600),
     Acrylic=true,
     MobileMode=BootMobile,
     SmallIcon=BootSmallIcon,
+    Visible=false,
 })
 
 local Tabs={
@@ -29,6 +43,7 @@ local Tabs={
     Farms=Window:AddTab({Title="Farms"}),
     Settings=Window:AddTab({Title="Settings",Settings=true}),
 }
+-- Aliases keep the showcase sections below easy to understand.
 Tabs.Controls=Tabs.Aim
 Tabs.Layouts=Tabs.Movement
 Tabs.Visuals=Tabs.Misc
@@ -36,7 +51,7 @@ Tabs.State=Tabs.Farms
 Loader:SetProgress(0.32,"Building controls")
 task.wait(0.08)
 
--- Home dashboard
+-- Home dashboard ---------------------------------------------------------------
 local Dashboard=Tabs.Home:AddSubtab("Dashboard")
 local PlayerInfo=Dashboard.Left:AddCard("Player")
 local PlayerName=PlayerInfo:AddLabel("")
@@ -74,7 +89,7 @@ end
 refreshDashboard()
 task.spawn(function() while not Library.Unloaded and Library.Window and Library.Window.Root.Parent do refreshDashboard();task.wait(1) end end)
 
--- Complete controls showcase
+-- Aim tab: complete controls showcase ------------------------------------------
 local Basic=Tabs.Controls:AddLeftGroupbox("Basic controls")
 Basic:AddLabel("Labels can be short.")
 Basic:AddLabel("Labels can also wrap across multiple lines when the second argument is true.",true)
@@ -108,7 +123,7 @@ end}):AddButton({Text="Notify",Action="Show",Func=function()
     Library:Notify({Title="Notification",Content="Everything is still inside the concept."})
 end})
 
--- Layout showcase
+-- Movement tab: layout showcase ------------------------------------------------
 local LeftLayout=Tabs.Layouts:AddLeftGroupbox("Left groupbox")
 LeftLayout:AddParagraph({Title="Groupboxes",Content="Linoria-style left and right groupboxes render inside the concept."})
 LeftLayout:AddToggle("LeftToggle",{Text="Left toggle",Default=true})
@@ -124,7 +139,8 @@ local RightTabbox=Tabs.Layouts:AddRightTabbox()
 RightTabbox:AddTab("Page One"):AddInput("TabboxInput",{Text="Tabbox input"})
 RightTabbox:AddTab("Page Two"):AddDropdown("TabboxDropdown",{Text="Tabbox dropdown",Values={"A","B","C"},Default=1})
 
--- Visual-only overlay previews; these do not target or inspect players.
+-- Misc tab: visual-only previews -----------------------------------------------
+-- These overlays do not target or inspect players.
 local FOVPreview=Library:CreateFOVCircle({Radius=120})
 local ESPPreview=Library:CreateESPPreview({Text="VISUAL PREVIEW"})
 local VisualControls=Tabs.Visuals:AddLeftGroupbox("Overlay previews")
@@ -137,7 +153,7 @@ Tabs.Visuals:AddRightGroupbox("Preview notes"):AddParagraph({Title="Display only
 Loader:SetProgress(0.62,"Connecting state and previews")
 task.wait(0.08)
 
--- State and API showcase
+-- Farms tab: state and API showcase --------------------------------------------
 local Dependencies=Tabs.State:AddLeftGroupbox("Dependencies")
 Dependencies:AddToggle("DependencyToggle",{Text="Show dependent controls",Default=true})
 local Depbox=Dependencies:AddDependencyBox()
@@ -167,6 +183,7 @@ Library.Options.Key:OnClick(function(value)
     print("Keybind clicked:",value)
 end)
 
+-- Settings addons --------------------------------------------------------------
 SaveManager:SetLibrary(Library)
 SaveManager:SetFolder("Luminware/configs")
 SaveManager:IgnoreThemeSettings()
@@ -181,8 +198,11 @@ InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 Loader:SetProgress(0.9,"Applying settings")
 task.wait(0.08)
 
+-- Final reveal -----------------------------------------------------------------
 Window:SelectTab(1)
 Library:SetWatermark("Luminware "..Library.Version)
 Library:SetWatermarkVisibility(true)
-Loader:Complete("Interface ready")
-Library:Notify({Title="Luminware",Content="Complete concept library loaded",Duration=5})
+Loader:Complete("Interface ready",function()
+    Window:SetVisible(true)
+    Library:Notify({Title="Luminware",Content="Complete concept library loaded",Duration=5})
+end)

@@ -110,7 +110,7 @@ local function pad(parent,l,r,t,b) return new("UIPadding",{PaddingLeft=UDim.new(
 local function logo(parent,size,z)
     local mark=new("Frame",{BackgroundTransparency=1,Size=UDim2.fromOffset(size,size),ZIndex=z or 2},parent)
     local letters=bind(new("TextLabel",{BackgroundTransparency=1,Size=UDim2.fromScale(1,1),Font=Enum.Font.GothamBold,Text="LW",
-        TextColor3=L.Colors.Text,TextSize=math.floor(size*0.38),TextXAlignment=Enum.TextXAlignment.Center,ZIndex=(z or 2)+1},mark),{TextColor3="Text"})
+        TextColor3=L.Colors.Text,TextSize=math.floor(size*0.48),TextXAlignment=Enum.TextXAlignment.Center,ZIndex=(z or 2)+1},mark),{TextColor3="Text"})
     local bar=bind(new("Frame",{AnchorPoint=Vector2.new(0.5,1),Position=UDim2.new(0.5,0,1,-3),Size=UDim2.fromOffset(size*0.58,3),
         BackgroundColor3=L.Colors.Accent,ZIndex=(z or 2)+2},mark),{BackgroundColor3="Accent"});corner(bar,1)
     return mark
@@ -303,7 +303,7 @@ function L:CreateLoader(info)
         end)
         return self
     end
-    function api:Complete(finalStatus)
+    function api:Complete(finalStatus,onComplete)
         if not overlay.Parent or self.Completing then return end
         self.Completing=true
         local remaining=math.max(0.35,minimumDuration-(os.clock()-startedAt))
@@ -328,6 +328,7 @@ function L:CreateLoader(info)
             tween(track,{BackgroundTransparency=1},0.2);tween(fill,{BackgroundTransparency=1},0.2);tween(overlay,{BackgroundTransparency=1},0.32)
             task.wait(0.36);overlay:Destroy();L.LoaderActive=false
             if L.AcrylicRequested then L:ToggleAcrylic(true) end
+            callback(onComplete)
         end)
     end
     tween(overlay,{BackgroundTransparency=0.28},0.22)
@@ -452,6 +453,8 @@ local function createCard(column,title,window)
             AutoButtonColor=false,BackgroundColor3=L.Colors.Control,BackgroundTransparency=0.25,
             Font=Enum.Font.Gotham,Text=info.Action or "Action",TextColor3=L.Colors.Text,TextSize=11},r),{BackgroundColor3="Control",TextColor3="Text"})
         corner(b,6);stroke(b,0.78)
+        b.MouseEnter:Connect(function() tween(b,{BackgroundTransparency=0.08},0.14) end)
+        b.MouseLeave:Connect(function() tween(b,{BackgroundTransparency=0.25},0.14) end)
         local clicks=0
         b.Activated:Connect(function()
             if info.DoubleClick then clicks+=1;if clicks<2 then task.delay(0.35,function()clicks=0 end);return end;clicks=0 end
@@ -677,11 +680,12 @@ end
 
 function L:CreateWindow(config)
     config=config or {};local width=config.Size and config.Size.X.Offset or 900;local height=config.Size and config.Size.Y.Offset or 600
-    local window={Tabs={},TabOrder={},MobileMode=not not config.MobileMode,SmallIconEnabled=config.SmallIcon~=false,Visible=true}
+    local initiallyVisible=config.Visible~=false
+    local window={Tabs={},TabOrder={},MobileMode=not not config.MobileMode,SmallIconEnabled=config.SmallIcon~=false,Visible=initiallyVisible}
     local desktopSize=Vector2.new(width,height)
     local mobileSize=Vector2.new(config.MobileSize and config.MobileSize.X.Offset or 720,config.MobileSize and config.MobileSize.Y.Offset or 480)
     if window.MobileMode then width=mobileSize.X;height=mobileSize.Y end
-    local root=new("Frame",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.5),Size=UDim2.fromOffset(width,height),BackgroundTransparency=1},Screen)
+    local root=new("Frame",{Visible=initiallyVisible,AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.5),Size=UDim2.fromOffset(width,height),BackgroundTransparency=1},Screen)
     local scale=new("UIScale",{Scale=0.965},root)
     local panel=bind(new("Frame",{Size=UDim2.fromScale(1,1),BackgroundColor3=self.Colors.Panel,BackgroundTransparency=1,ClipsDescendants=true},root),{BackgroundColor3="Panel"});corner(panel,12);stroke(panel,0.78)
     local rail=bind(new("Frame",{Position=UDim2.fromOffset(14,14),Size=UDim2.new(0,72,1,-28),BackgroundColor3=self.Colors.Rail,BackgroundTransparency=0.18},panel),{BackgroundColor3="Rail"});corner(rail,9);stroke(rail,0.8)
@@ -715,13 +719,15 @@ function L:CreateWindow(config)
         Rotation=-45,BackgroundColor3=self.Colors.Muted,ZIndex=21},resizeGrip),{BackgroundColor3="Muted"});corner(gripLine,1)
     local icon=bind(new("TextButton",{Visible=false,AutoButtonColor=false,Text="",Font=Enum.Font.GothamMedium,TextSize=14,TextColor3=self.Colors.Text,
         Position=UDim2.fromOffset(18,70),Size=UDim2.fromOffset(48,48),BackgroundColor3=self.Colors.Panel,BackgroundTransparency=0.06,ZIndex=295},Screen),{BackgroundColor3="Panel",TextColor3="Text"})
-    corner(icon,7);stroke(icon,0.66);local iconLogo=logo(icon,28,296);iconLogo.AnchorPoint=Vector2.new(0.5,0.5);iconLogo.Position=UDim2.fromScale(0.5,0.5);local iconDrag=drag(icon,icon)
+    corner(icon,7);stroke(icon,0.66);local iconLogo=logo(icon,36,296);iconLogo.AnchorPoint=Vector2.new(0.5,0.5);iconLogo.Position=UDim2.fromScale(0.5,0.5);local iconDrag=drag(icon,icon)
     local function resize()
         local v=workspace.CurrentCamera.ViewportSize
         local logical=root.Size
         scale.Scale=math.min(1,v.X/(logical.X.Offset+36),v.Y/(logical.Y.Offset+36))
     end
-    resize();local finalScale=scale.Scale;scale.Scale=finalScale*0.965;tween(scale,{Scale=finalScale},0.38);tween(panel,{BackgroundTransparency=0.17},0.32)
+    resize();local finalScale=scale.Scale
+    if initiallyVisible then scale.Scale=finalScale*0.965;tween(scale,{Scale=finalScale},0.38);tween(panel,{BackgroundTransparency=0.17},0.32)
+    else scale.Scale=finalScale;panel.BackgroundTransparency=0.17 end
     register(workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(resize))
     local resizing,startPointer,startSize=false
     resizeGrip.InputBegan:Connect(function(input)
@@ -769,6 +775,8 @@ function L:CreateWindow(config)
         tabIcon.AnchorPoint=Vector2.new(0.5,0.5);tabIcon.Position=UDim2.fromScale(0.5,0.5);tabIcon.Size=UDim2.fromOffset(20,20)
         if not asset then tabIcon.TextXAlignment=Enum.TextXAlignment.Center end
         local function iconColor(color) tween(tabIcon,asset and {ImageColor3=color} or {TextColor3=color}) end
+        button.MouseEnter:Connect(function() if not tab.Active then tween(button,{BackgroundTransparency=0.68},0.14);iconColor(L.Colors.Text) end end)
+        button.MouseLeave:Connect(function() if not tab.Active then tween(button,{BackgroundTransparency=1},0.14);iconColor(L.Colors.Muted) end end)
         function tab:Show()
             closePopups()
             for _,other in ipairs(window.TabOrder) do other:Hide() end
@@ -795,7 +803,8 @@ function L:CreateWindow(config)
             sub.Root=page;sub.Button=sb;sub.Left=makeColumn(page,0,0.5,window);sub.Right=makeColumn(page,0.5,0.5,window)
             function sub:Show()
                 for _,other in ipairs(tab.SubtabOrder) do other:Hide() end
-                page.Visible=true;self.Active=true;tween(sb,{TextColor3=L.Colors.Text});tween(line,{BackgroundTransparency=0})
+                page.Visible=true;page.Position=UDim2.fromOffset(7,0);self.Active=true
+                tween(page,{Position=UDim2.fromOffset(0,0)},0.28);tween(sb,{TextColor3=L.Colors.Text});tween(line,{BackgroundTransparency=0})
             end
             function sub:Hide() page.Visible=false;self.Active=false;tween(sb,{TextColor3=L.Colors.Muted});tween(line,{BackgroundTransparency=1}) end
             sb.Activated:Connect(function() sub:Show() end)
@@ -859,22 +868,27 @@ function L:CreateWindow(config)
         closePopups();self.Visible=value;self.VisibilityToken=(self.VisibilityToken or 0)+1;local token=self.VisibilityToken
         if value then
             root.Visible=true;icon.Visible=false;resize();local targetScale=scale.Scale
+            local restingPosition=self.RestingPosition or root.Position
             for overlay,wasVisible in next,self.OverlayVisibility or {} do if overlay.Parent then overlay.Visible=wasVisible end end
             self.OverlayVisibility=nil
-            scale.Scale=targetScale*0.955;panel.BackgroundTransparency=0.62
-            tween(scale,{Scale=targetScale},0.28);tween(panel,{BackgroundTransparency=0.17},0.24)
+            scale.Scale=targetScale*0.94;panel.BackgroundTransparency=0.88
+            root.Position=UDim2.new(restingPosition.X.Scale,restingPosition.X.Offset,restingPosition.Y.Scale,restingPosition.Y.Offset+12)
+            tween(root,{Position=restingPosition},0.34);tween(scale,{Scale=targetScale},0.38);tween(panel,{BackgroundTransparency=0.17},0.3)
         else
             self.OverlayVisibility={}
             for overlay in next,L.Overlays do if overlay.Parent then self.OverlayVisibility[overlay]=overlay.Visible;overlay.Visible=false end end
             local targetScale=scale.Scale
-            tween(scale,{Scale=targetScale*0.965},0.2);tween(panel,{BackgroundTransparency=0.72},0.18)
-            task.delay(0.2,function()
+            local restingPosition=root.Position
+            self.RestingPosition=restingPosition
+            local exitPosition=UDim2.new(restingPosition.X.Scale,restingPosition.X.Offset,restingPosition.Y.Scale,restingPosition.Y.Offset+10)
+            tween(root,{Position=exitPosition},0.28);tween(scale,{Scale=targetScale*0.94},0.3);tween(panel,{BackgroundTransparency=0.92},0.26)
+            task.delay(0.3,function()
                 if self.VisibilityToken~=token then return end
-                root.Visible=false;scale.Scale=targetScale;panel.BackgroundTransparency=0.17
+                root.Visible=false;root.Position=restingPosition;scale.Scale=targetScale;panel.BackgroundTransparency=0.17
                 icon.Visible=self.SmallIconEnabled
                 if icon.Visible then
-                    icon.Size=UDim2.fromOffset(42,42);icon.BackgroundTransparency=0.5
-                    tween(icon,{Size=UDim2.fromOffset(48,48),BackgroundTransparency=0.06},0.22)
+                    icon.Size=UDim2.fromOffset(38,38);icon.BackgroundTransparency=0.72
+                    tween(icon,{Size=UDim2.fromOffset(54,54),BackgroundTransparency=0.06},0.32)
                 end
             end)
         end
@@ -889,8 +903,10 @@ function L:CreateWindow(config)
     end
     function window:Destroy()
         closePopups()
-        tween(scale,{Scale=scale.Scale*0.95},0.2);tween(panel,{BackgroundTransparency=1},0.18)
-        task.delay(0.22,function()
+        local position=root.Position
+        tween(root,{Position=UDim2.new(position.X.Scale,position.X.Offset,position.Y.Scale,position.Y.Offset+14)},0.3)
+        tween(scale,{Scale=scale.Scale*0.92},0.32);tween(panel,{BackgroundTransparency=1},0.28)
+        task.delay(0.34,function()
             for popup,owner in next,L.Popups do if owner==window then unbind(popup);popup:Destroy() end end
             icon:Destroy();root:Destroy()
         end)

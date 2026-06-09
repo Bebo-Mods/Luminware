@@ -43,6 +43,7 @@ local Window=Library:CreateWindow({
     Acrylic=true,
     MobileMode=false,
     SmallIcon=true,
+    Visible=true,
 })
 
 local Home=Window:AddTab({Title="Home"})
