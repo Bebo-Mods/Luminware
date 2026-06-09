@@ -57,5 +57,3 @@ Controls:AddSlider("Amount",{Text="Slider",Min=0,Max=100,Default=50,Rounding=0})
 ```
 
 See [`Example.lua`](Example.lua) for the complete showcase covering controls, layouts, state APIs, dependencies, feedback, themes, configs, and lifecycle features.
-
-See [`BloxStrikeUI.lua`](BloxStrikeUI.lua) for a large responsive UI-only menu port with local preview state and no gameplay hooks.
