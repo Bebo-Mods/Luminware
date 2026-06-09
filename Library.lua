@@ -94,6 +94,13 @@ end
 local function corner(parent,r) return new("UICorner",{CornerRadius=UDim.new(0,r or 12)},parent) end
 local function stroke(parent,t) return bind(new("UIStroke",{Color=L.Colors.Outline,Transparency=t or 0.86,Thickness=1},parent),{Color="Outline"}) end
 local function pad(parent,l,r,t,b) return new("UIPadding",{PaddingLeft=UDim.new(0,l or 0),PaddingRight=UDim.new(0,r or 0),PaddingTop=UDim.new(0,t or 0),PaddingBottom=UDim.new(0,b or 0)},parent) end
+local function logo(parent,size,z)
+    local mark=new("Frame",{BackgroundTransparency=1,Size=UDim2.fromOffset(size,size),ZIndex=z or 2},parent)
+    local left=bind(new("Frame",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.37,0.54),Size=UDim2.fromOffset(4,size*0.68),Rotation=24,BackgroundColor3=L.Colors.Accent,ZIndex=(z or 2)+1},mark),{BackgroundColor3="Accent"});corner(left,1)
+    local right=bind(new("Frame",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.63,0.54),Size=UDim2.fromOffset(4,size*0.68),Rotation=-24,BackgroundColor3=L.Colors.Accent,ZIndex=(z or 2)+1},mark),{BackgroundColor3="Accent"});corner(right,1)
+    local bar=bind(new("Frame",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.58),Size=UDim2.fromOffset(size*0.38,3),BackgroundColor3=L.Colors.Text,ZIndex=(z or 2)+2},mark),{BackgroundColor3="Text"});corner(bar,1)
+    return mark
+end
 local function tween(object,props,d)
     if object and object.Parent then TS:Create(object,TweenInfo.new(d or 0.18,Enum.EasingStyle.Quint,Enum.EasingDirection.Out),props):Play() end
 end
@@ -172,7 +179,7 @@ end))
 
 local Watermark=bind(new("Frame",{Visible=false,Active=true,Position=UDim2.fromOffset(12,12),Size=UDim2.fromOffset(410,30),
     BackgroundColor3=L.Colors.Card,BackgroundTransparency=0.12,ZIndex=290},Screen),{BackgroundColor3="Card"})
-corner(Watermark,13);stroke(Watermark,0.68)
+corner(Watermark,5);stroke(Watermark,0.68)
 local WatermarkText=text(Watermark,"Luminware",10,L.Colors.Text,true);WatermarkText.Position=UDim2.fromOffset(11,0);WatermarkText.Size=UDim2.new(1,-22,1,0)
 local WatermarkPrefix="Luminware"
 local ExperienceName=game.Name
@@ -201,7 +208,7 @@ function L:OnUnload(fn) table.insert(self.OnUnloadCallbacks,fn) end
 
 local KeybindFrame=bind(new("Frame",{Visible=false,Position=UDim2.fromOffset(12,52),Size=UDim2.fromOffset(220,0),
     AutomaticSize=Enum.AutomaticSize.Y,BackgroundColor3=L.Colors.Card,BackgroundTransparency=0.12,ZIndex=289},Screen),{BackgroundColor3="Card"})
-corner(KeybindFrame,14);stroke(KeybindFrame,0.68);pad(KeybindFrame,10,10,8,8)
+corner(KeybindFrame,5);stroke(KeybindFrame,0.68);pad(KeybindFrame,10,10,8,8)
 new("UIListLayout",{Padding=UDim.new(0,4)},KeybindFrame)
 L.KeybindFrame=KeybindFrame
 
@@ -209,7 +216,7 @@ function L:Notify(info)
     info=type(info)=="string" and {Title=info} or info or {}
     local box=bind(new("Frame",{BackgroundColor3=self.Colors.Card,BackgroundTransparency=0.12,
         Size=UDim2.fromOffset(290,info.Content and 72 or 50),ZIndex=301},Notifications),{BackgroundColor3="Card"})
-    corner(box,15);stroke(box,0.72)
+    corner(box,6);stroke(box,0.72)
     local title=text(box,info.Title or "Notification",12,self.Colors.Text,true)
     title.Position=UDim2.fromOffset(15,8);title.Size=UDim2.new(1,-30,0,20)
     if info.Content or info.SubContent then
@@ -228,7 +235,7 @@ function L:CreateLoader(info)
     local overlay=new("Frame",{Active=true,Size=UDim2.fromScale(1,1),BackgroundColor3=self.Colors.Dark,BackgroundTransparency=1,ZIndex=400},Screen)
     local card=bind(new("Frame",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.new(0.5,0,0.5,10),Size=UDim2.fromOffset(390,164),
         BackgroundColor3=self.Colors.Panel,BackgroundTransparency=1,ZIndex=401},overlay),{BackgroundColor3="Panel"})
-    corner(card,20);local cardStroke=stroke(card,1)
+    corner(card,7);local cardStroke=stroke(card,1)
     local mark=bind(new("Frame",{Position=UDim2.fromOffset(22,22),Size=UDim2.fromOffset(4,42),BackgroundColor3=self.Colors.Accent,BackgroundTransparency=1,ZIndex=402},card),{BackgroundColor3="Accent"});corner(mark,2)
     local title=text(card,info.Title or "Luminware",15,self.Colors.Text,true);title.Position=UDim2.fromOffset(42,20);title.Size=UDim2.new(1,-64,0,24);title.TextTransparency=1;title.ZIndex=402
     local subtitle=text(card,info.Subtitle or "Initializing interface",10,self.Colors.Muted);subtitle.Position=UDim2.fromOffset(42,44);subtitle.Size=UDim2.new(1,-64,0,20);subtitle.TextTransparency=1;subtitle.ZIndex=402
@@ -314,9 +321,9 @@ end
 local function makeToggle(parent,initial,changed)
     local state=not not initial
     local track=new("TextButton",{AutoButtonColor=false,Text="",BackgroundColor3=state and L.Colors.Accent or L.Colors.Control,
-        Size=UDim2.fromOffset(46,25)},parent);corner(track,13)
+        Size=UDim2.fromOffset(46,25)},parent);corner(track,5)
     local knob=new("Frame",{AnchorPoint=Vector2.new(0.5,0.5),BackgroundColor3=L.Colors.White,
-        Position=UDim2.fromOffset(state and 33.5 or 12.5,12.5),Size=UDim2.fromOffset(19,19)},track);corner(knob,10)
+        Position=UDim2.fromOffset(state and 33.5 or 12.5,12.5),Size=UDim2.fromOffset(19,19)},track);corner(knob,5)
     local api={Value=state,Type="Toggle"}
     function api:SetValue(v)
         self.Value=not not v
@@ -340,11 +347,11 @@ local function finishOption(option,root)
 end
 
 local function createCard(column,title,window)
-    local card=bind(new("Frame",{BackgroundColor3=L.Colors.Card,BackgroundTransparency=0.27,BorderSizePixel=0,
+    local card=bind(new("Frame",{BackgroundColor3=L.Colors.Dark,BackgroundTransparency=0.16,BorderSizePixel=0,
         Size=UDim2.new(1,0,0,0),AutomaticSize=Enum.AutomaticSize.Y},column)
-        ,{BackgroundColor3="Card"})
+        ,{BackgroundColor3="Dark"})
     card:SetAttribute("SearchText",title or "")
-    corner(card,17);stroke(card,0.76);pad(card,14,14,12,14)
+    corner(card,7);stroke(card,0.8);pad(card,14,14,12,14)
     local layout=new("UIListLayout",{Padding=UDim.new(0,8),SortOrder=Enum.SortOrder.LayoutOrder},card)
     local api={Title=title or "",Root=card,Window=window}
     if title and title~="" then
@@ -359,7 +366,7 @@ local function createCard(column,title,window)
         if info.Tooltip then
             local tip=ownPopup(bind(new("Frame",{Visible=false,BackgroundColor3=L.Colors.Card,BackgroundTransparency=0.08,
                 Size=UDim2.fromOffset(220,36),ZIndex=230},Screen),{BackgroundColor3="Card"}),window)
-            corner(tip,11);stroke(tip,0.68)
+            corner(tip,5);stroke(tip,0.68)
             local tipText=text(tip,info.Tooltip,10,L.Colors.Text);tipText.Position=UDim2.fromOffset(10,0);tipText.Size=UDim2.new(1,-20,1,0);tipText.TextWrapped=true
             label.Active=true
             label.MouseEnter:Connect(function() closePopups(tip);tip.Position=UDim2.fromOffset(Mouse.X+12,Mouse.Y+12);tip.Visible=true end)
@@ -397,7 +404,7 @@ local function createCard(column,title,window)
         local b=bind(new("TextButton",{AnchorPoint=Vector2.new(1,0.5),Position=UDim2.new(1,0,0.5,0),Size=UDim2.fromOffset(92,30),
             AutoButtonColor=false,BackgroundColor3=L.Colors.Control,BackgroundTransparency=0.25,
             Font=Enum.Font.Gotham,Text=info.Action or "Action",TextColor3=L.Colors.Text,TextSize=11},r),{BackgroundColor3="Control",TextColor3="Text"})
-        corner(b,15);stroke(b,0.78)
+        corner(b,6);stroke(b,0.78)
         local clicks=0
         b.Activated:Connect(function()
             if info.DoubleClick then clicks+=1;if clicks<2 then task.delay(0.35,function()clicks=0 end);return end;clicks=0 end
@@ -420,7 +427,7 @@ local function createCard(column,title,window)
         local r=row(52);local title=rowTitle(r,info);title.Size=UDim2.new(1,-62,0,20)
         finishOption(option,r)
         local badge=bind(new("Frame",{AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,0,0,0),Size=UDim2.fromOffset(50,20),
-            BackgroundColor3=L.Colors.Dark,BackgroundTransparency=0.34},r),{BackgroundColor3="Dark"});corner(badge,8);stroke(badge,0.88)
+            BackgroundColor3=L.Colors.Dark,BackgroundTransparency=0.34},r),{BackgroundColor3="Dark"});corner(badge,4);stroke(badge,0.88)
         local value=text(badge,"",9,L.Colors.Muted,true);value.Size=UDim2.fromScale(1,1);value.TextXAlignment=Enum.TextXAlignment.Center
         local track=bind(new("Frame",{AnchorPoint=Vector2.new(0,0.5),Position=UDim2.new(0,0,0,38),Size=UDim2.new(1,0,0,5),
             BackgroundColor3=L.Colors.Control,BackgroundTransparency=0.18},r),{BackgroundColor3="Control"});corner(track,3)
@@ -463,11 +470,11 @@ local function createCard(column,title,window)
         local option={Value=initial,Values=values,Multi=not not info.Multi,Type="Dropdown"}
         local r=row(62);local t=rowTitle(r,info);t.Size=UDim2.new(1,0,0,20)
         local box=bind(new("TextButton",{AutoButtonColor=false,Position=UDim2.fromOffset(0,25),Size=UDim2.new(1,0,0,31),
-            BackgroundColor3=L.Colors.Control,BackgroundTransparency=0.27,Font=Enum.Font.Gotham,Text="",TextColor3=L.Colors.Text,TextSize=11,TextXAlignment=Enum.TextXAlignment.Left},r),{BackgroundColor3="Control",TextColor3="Text"});corner(box,12);stroke(box,0.8);pad(box,11,11)
+            BackgroundColor3=L.Colors.Control,BackgroundTransparency=0.27,Font=Enum.Font.Gotham,Text="",TextColor3=L.Colors.Text,TextSize=11,TextXAlignment=Enum.TextXAlignment.Left},r),{BackgroundColor3="Control",TextColor3="Text"});corner(box,5);stroke(box,0.8);pad(box,11,11)
         finishOption(option,r)
         local pop=bind(new("ScrollingFrame",{Visible=false,Position=UDim2.fromOffset(0,62),BackgroundColor3=L.Colors.Card,BackgroundTransparency=0.08,
             Size=UDim2.new(1,0,0,0),CanvasSize=UDim2.fromOffset(0,0),AutomaticCanvasSize=Enum.AutomaticSize.Y,
-            ScrollBarThickness=2,ScrollBarImageColor3=L.Colors.Accent,BorderSizePixel=0,ZIndex=2},r),{BackgroundColor3="Card",ScrollBarImageColor3="Accent"});corner(pop,12);stroke(pop,0.7);pad(pop,5,5,5,5)
+            ScrollBarThickness=2,ScrollBarImageColor3=L.Colors.Accent,BorderSizePixel=0,ZIndex=2},r),{BackgroundColor3="Card",ScrollBarImageColor3="Accent"});corner(pop,5);stroke(pop,0.7);pad(pop,5,5,5,5)
         local popLayout=new("UIListLayout",{Padding=UDim.new(0,3)},pop)
         local function close()
             pop.Visible=false
@@ -486,7 +493,7 @@ local function createCard(column,title,window)
                 local selected=option.Multi and option.Value[v] or option.Value==v
                 local item=new("TextButton",{AutoButtonColor=false,BackgroundColor3=selected and L.Colors.White or L.Colors.Control,
                     BackgroundTransparency=selected and 0 or 0.35,Size=UDim2.new(1,0,0,28),Font=Enum.Font.Gotham,Text=tostring(v),
-                    TextColor3=selected and L.Colors.Dark or L.Colors.Text,TextSize=10,ZIndex=201},pop);corner(item,9)
+                    TextColor3=selected and L.Colors.Dark or L.Colors.Text,TextSize=10,ZIndex=201},pop);corner(item,4)
                 item.Activated:Connect(function()
                     if option.Multi then option.Value[v]=not option.Value[v] else option.Value=v;close() end
                     render();callback(info.Callback,option.Value);callback(option.Changed,option.Value)
@@ -513,7 +520,7 @@ local function createCard(column,title,window)
         finishOption(option,r)
         local box=bind(new("TextBox",{Position=UDim2.fromOffset(0,25),Size=UDim2.new(1,0,0,31),BackgroundColor3=L.Colors.Control,BackgroundTransparency=0.27,
             ClearTextOnFocus=false,Font=Enum.Font.Gotham,Text=option.Value,PlaceholderText=info.Placeholder or "",TextColor3=L.Colors.Text,
-            PlaceholderColor3=L.Colors.Muted,TextSize=11,TextXAlignment=Enum.TextXAlignment.Left},r),{BackgroundColor3="Control",TextColor3="Text",PlaceholderColor3="Muted"});corner(box,12);stroke(box,0.8);pad(box,11,11)
+            PlaceholderColor3=L.Colors.Muted,TextSize=11,TextXAlignment=Enum.TextXAlignment.Left},r),{BackgroundColor3="Control",TextColor3="Text",PlaceholderColor3="Muted"});corner(box,5);stroke(box,0.8);pad(box,11,11)
         function option:SetValue(v) self.Value=tostring(v or "");box.Text=self.Value end
         function option:OnChanged(fn) self.Changed=fn;fn(self.Value) end
         function option:RefreshTheme() box.BackgroundColor3=L.Colors.Control end
@@ -529,7 +536,7 @@ local function createCard(column,title,window)
         local r=row(38);rowTitle(r,info)
         finishOption(option,r)
         local button=bind(new("TextButton",{AnchorPoint=Vector2.new(1,0.5),Position=UDim2.new(1,0,0.5,0),Size=UDim2.fromOffset(90,29),
-            BackgroundColor3=L.Colors.Control,BackgroundTransparency=0.27,Font=Enum.Font.Gotham,Text=option.Value,TextColor3=L.Colors.Text,TextSize=10},r),{BackgroundColor3="Control",TextColor3="Text"});corner(button,12);stroke(button,0.8)
+            BackgroundColor3=L.Colors.Control,BackgroundTransparency=0.27,Font=Enum.Font.Gotham,Text=option.Value,TextColor3=L.Colors.Text,TextSize=10},r),{BackgroundColor3="Control",TextColor3="Text"});corner(button,5);stroke(button,0.8)
         local picking=false
         local display
         if not info.NoUI then
@@ -551,18 +558,18 @@ local function createCard(column,title,window)
         info=info or {};local option={Value=info.Default or L.Colors.Accent,Transparency=info.Transparency or 0,Type="ColorPicker"}
         local r=row(38);rowTitle(r,info)
         finishOption(option,r)
-        local swatch=new("TextButton",{AnchorPoint=Vector2.new(1,0.5),Position=UDim2.new(1,0,0.5,0),Size=UDim2.fromOffset(46,25),Text="",BackgroundColor3=option.Value},r);corner(swatch,13);stroke(swatch,0.65)
+        local swatch=new("TextButton",{AnchorPoint=Vector2.new(1,0.5),Position=UDim2.new(1,0,0.5,0),Size=UDim2.fromOffset(30,30),Text="",BackgroundColor3=option.Value},r);corner(swatch,3);stroke(swatch,0.65)
         local hue,sat,val=Color3.toHSV(option.Value)
-        local pop=ownPopup(bind(new("Frame",{Visible=false,BackgroundColor3=L.Colors.Card,BackgroundTransparency=0.04,Size=UDim2.fromOffset(240,250),ZIndex=200},Screen),{BackgroundColor3="Card"}),window);corner(pop,16);stroke(pop,0.6);pad(pop,12,12,12,12)
+        local pop=ownPopup(bind(new("Frame",{Visible=false,BackgroundColor3=L.Colors.Card,BackgroundTransparency=0.04,Size=UDim2.fromOffset(240,250),ZIndex=200},Screen),{BackgroundColor3="Card"}),window);corner(pop,5);stroke(pop,0.6);pad(pop,12,12,12,12)
         local title=text(pop,info.Title or info.Text or "Color picker",12,L.Colors.Text,true);title.Size=UDim2.new(1,0,0,22)
-        local sv=new("ImageLabel",{Position=UDim2.fromOffset(0,30),Size=UDim2.new(1,-25,0,150),Image="rbxassetid://4155801252",BackgroundColor3=Color3.fromHSV(hue,1,1),ZIndex=201},pop);corner(sv,8)
+        local sv=new("ImageLabel",{Position=UDim2.fromOffset(0,30),Size=UDim2.new(1,-25,0,150),Image="rbxassetid://4155801252",BackgroundColor3=Color3.fromHSV(hue,1,1),ZIndex=201},pop);corner(sv,2)
         local svCursor=new("Frame",{AnchorPoint=Vector2.new(0.5,0.5),Size=UDim2.fromOffset(12,12),BackgroundColor3=L.Colors.White,ZIndex=202},sv);corner(svCursor,6);stroke(svCursor,0.1)
-        local hueBar=new("Frame",{Position=UDim2.new(1,-17,0,30),Size=UDim2.fromOffset(17,150),ZIndex=201},pop);corner(hueBar,8)
+        local hueBar=new("Frame",{Position=UDim2.new(1,-17,0,30),Size=UDim2.fromOffset(17,150),ZIndex=201},pop);corner(hueBar,2)
         local hueKeys={} for i=0,10 do table.insert(hueKeys,ColorSequenceKeypoint.new(i/10,Color3.fromHSV(i/10,1,1))) end
         new("UIGradient",{Color=ColorSequence.new(hueKeys),Rotation=90},hueBar)
         local hueCursor=new("Frame",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,hue),Size=UDim2.fromOffset(21,5),BackgroundColor3=L.Colors.White,ZIndex=202},hueBar);corner(hueCursor,3)
         local hex=new("TextBox",{ClearTextOnFocus=false,Position=UDim2.fromOffset(0,190),BackgroundColor3=L.Colors.Control,BackgroundTransparency=0.2,Size=UDim2.new(1,0,0,32),
-            Font=Enum.Font.Gotham,Text="#"..option.Value:ToHex(),TextColor3=L.Colors.Text,TextSize=11,ZIndex=201},pop);corner(hex,10)
+            Font=Enum.Font.Gotham,Text="#"..option.Value:ToHex(),TextColor3=L.Colors.Text,TextSize=11,ZIndex=201},pop);corner(hex,4)
         local function render(fire)
             option.Value=Color3.fromHSV(hue,sat,val);swatch.BackgroundColor3=option.Value;sv.BackgroundColor3=Color3.fromHSV(hue,1,1)
             svCursor.Position=UDim2.fromScale(sat,1-val);hueCursor.Position=UDim2.fromScale(0.5,hue);hex.Text="#"..option.Value:ToHex()
@@ -629,31 +636,34 @@ function L:CreateWindow(config)
     if window.MobileMode then width=mobileSize.X;height=mobileSize.Y end
     local root=new("Frame",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.5),Size=UDim2.fromOffset(width,height),BackgroundTransparency=1},Screen)
     local scale=new("UIScale",{Scale=0.965},root)
-    local panel=bind(new("Frame",{Size=UDim2.fromScale(1,1),BackgroundColor3=self.Colors.Panel,BackgroundTransparency=1,ClipsDescendants=true},root),{BackgroundColor3="Panel"});corner(panel,28);stroke(panel,0.78)
-    local rail=bind(new("Frame",{Position=UDim2.fromOffset(14,14),Size=UDim2.new(0,72,1,-28),BackgroundColor3=self.Colors.Rail,BackgroundTransparency=0.28},panel),{BackgroundColor3="Rail"});corner(rail,22);stroke(rail,0.8)
-    local nav=new("Frame",{Position=UDim2.fromOffset(10,12),Size=UDim2.new(1,-20,1,-70),BackgroundTransparency=1},rail)
+    local panel=bind(new("Frame",{Size=UDim2.fromScale(1,1),BackgroundColor3=self.Colors.Panel,BackgroundTransparency=1,ClipsDescendants=true},root),{BackgroundColor3="Panel"});corner(panel,12);stroke(panel,0.78)
+    local rail=bind(new("Frame",{Position=UDim2.fromOffset(14,14),Size=UDim2.new(0,72,1,-28),BackgroundColor3=self.Colors.Rail,BackgroundTransparency=0.18},panel),{BackgroundColor3="Rail"});corner(rail,9);stroke(rail,0.8)
+    local brand=logo(rail,34,3);brand.AnchorPoint=Vector2.new(0.5,0);brand.Position=UDim2.new(0.5,0,0,13)
+    local nav=new("Frame",{Position=UDim2.fromOffset(10,62),Size=UDim2.new(1,-20,1,-124),BackgroundTransparency=1},rail)
     new("UIListLayout",{Padding=UDim.new(0,8),HorizontalAlignment=Enum.HorizontalAlignment.Center,SortOrder=Enum.SortOrder.LayoutOrder},nav)
-    local power=bind(new("TextButton",{AnchorPoint=Vector2.new(0.5,1),Position=UDim2.new(0.5,0,1,-12),Size=UDim2.fromOffset(42,36),BackgroundTransparency=1,
-        Font=Enum.Font.GothamMedium,Text="O",TextColor3=self.Colors.Text,TextSize=16},rail),{TextColor3="Text"})
+    local settingsButton=bind(new("TextButton",{AnchorPoint=Vector2.new(0.5,1),Position=UDim2.new(0.5,0,1,-12),Size=UDim2.fromOffset(44,38),BackgroundColor3=self.Colors.Dark,BackgroundTransparency=0.65,
+        Font=Enum.Font.GothamMedium,Text="",TextColor3=self.Colors.Muted,TextSize=9},rail),{BackgroundColor3="Dark",TextColor3="Muted"});corner(settingsButton,5);stroke(settingsButton,0.86)
+    local settingsGlyph=new("Frame",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.5),Size=UDim2.fromOffset(15,15),BackgroundTransparency=1},settingsButton);corner(settingsGlyph,3);stroke(settingsGlyph,0.28)
+    local settingsCenter=bind(new("Frame",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.5),Size=UDim2.fromOffset(5,5),BackgroundColor3=self.Colors.Accent},settingsGlyph),{BackgroundColor3="Accent"});corner(settingsCenter,1)
     local content=new("Frame",{Position=UDim2.fromOffset(104,14),Size=UDim2.new(1,-118,1,-28),BackgroundTransparency=1},panel)
     local header=new("Frame",{Size=UDim2.new(1,0,0,54),BackgroundTransparency=1},content)
     local dragSurface=new("TextButton",{AutoButtonColor=false,Text="",BackgroundTransparency=1,Size=UDim2.fromScale(1,1),ZIndex=1},header);drag(dragSurface,root)
-    local subtabs=new("Frame",{Position=UDim2.fromOffset(0,4),Size=UDim2.new(1,-245,0,42),BackgroundTransparency=1,ZIndex=2},header)
+    local subtabs=new("Frame",{Position=UDim2.fromOffset(0,4),Size=UDim2.new(0.42,0,0,42),BackgroundTransparency=1,ZIndex=2},header)
     local subLayout=new("UIListLayout",{FillDirection=Enum.FillDirection.Horizontal,Padding=UDim.new(0,8),SortOrder=Enum.SortOrder.LayoutOrder},subtabs)
-    local search=bind(new("TextBox",{AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,-68,0,5),Size=UDim2.fromOffset(170,35),BackgroundColor3=self.Colors.Dark,BackgroundTransparency=0.5,
-        ClearTextOnFocus=false,Font=Enum.Font.Gotham,PlaceholderText="Q  Search",PlaceholderColor3=self.Colors.Muted,Text="",TextColor3=self.Colors.Text,TextSize=11,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=2},header),{BackgroundColor3="Dark",PlaceholderColor3="Muted",TextColor3="Text"});corner(search,16);pad(search,13,8)
-    local initial=(Player.DisplayName~="" and Player.DisplayName or Player.Name):sub(1,1):upper()
-    local initialLabel=text(header,initial,12,self.Colors.Text,true);initialLabel.AnchorPoint=Vector2.new(1,0);initialLabel.Position=UDim2.new(1,-38,0,5);initialLabel.Size=UDim2.fromOffset(25,35);initialLabel.TextXAlignment=Enum.TextXAlignment.Center;initialLabel.ZIndex=2
-    local avatar=new("ImageLabel",{AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,0,0,6),Size=UDim2.fromOffset(32,32),BackgroundColor3=self.Colors.White,
-        Image=("rbxthumb://type=AvatarHeadShot&id=%d&w=150&h=150"):format(Player.UserId),ZIndex=2},header);corner(avatar,16);stroke(avatar,0.25)
+    local search=bind(new("TextBox",{AnchorPoint=Vector2.new(0.5,0),Position=UDim2.new(0.68,0,0,5),Size=UDim2.fromOffset(280,35),BackgroundColor3=self.Colors.Dark,BackgroundTransparency=0.34,
+        ClearTextOnFocus=false,Font=Enum.Font.Gotham,PlaceholderText="Q  Search features",PlaceholderColor3=self.Colors.Muted,Text="",TextColor3=self.Colors.Text,TextSize=11,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=2},header),{BackgroundColor3="Dark",PlaceholderColor3="Muted",TextColor3="Text"});corner(search,5);stroke(search,0.88);pad(search,13,8)
+    local minimize=bind(new("TextButton",{AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,-39,0,6),Size=UDim2.fromOffset(34,32),AutoButtonColor=false,
+        BackgroundColor3=self.Colors.Control,BackgroundTransparency=0.6,Font=Enum.Font.GothamMedium,Text="-",TextColor3=self.Colors.Muted,TextSize=16,ZIndex=3},header),{BackgroundColor3="Control",TextColor3="Muted"});corner(minimize,4)
+    local destroy=bind(new("TextButton",{AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,0,0,6),Size=UDim2.fromOffset(34,32),AutoButtonColor=false,
+        BackgroundColor3=self.Colors.Control,BackgroundTransparency=0.6,Font=Enum.Font.GothamMedium,Text="X",TextColor3=self.Colors.Muted,TextSize=10,ZIndex=3},header),{BackgroundColor3="Control",TextColor3="Muted"});corner(destroy,4)
     local pages=new("Frame",{Position=UDim2.fromOffset(0,56),Size=UDim2.new(1,0,1,-56),BackgroundTransparency=1,ClipsDescendants=true},content)
     local resizeGrip=bind(new("TextButton",{AutoButtonColor=false,Text="",AnchorPoint=Vector2.new(1,1),Position=UDim2.new(1,-7,1,-7),
         Size=UDim2.fromOffset(22,22),BackgroundColor3=self.Colors.Control,BackgroundTransparency=0.72,ZIndex=20},panel),{BackgroundColor3="Control"});corner(resizeGrip,8)
     local gripLine=bind(new("Frame",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.5),Size=UDim2.fromOffset(8,2),
         Rotation=-45,BackgroundColor3=self.Colors.Muted,ZIndex=21},resizeGrip),{BackgroundColor3="Muted"});corner(gripLine,1)
-    local icon=bind(new("TextButton",{Visible=false,AutoButtonColor=false,Text=initial,Font=Enum.Font.GothamMedium,TextSize=14,TextColor3=self.Colors.Text,
+    local icon=bind(new("TextButton",{Visible=false,AutoButtonColor=false,Text="",Font=Enum.Font.GothamMedium,TextSize=14,TextColor3=self.Colors.Text,
         Position=UDim2.fromOffset(18,70),Size=UDim2.fromOffset(48,48),BackgroundColor3=self.Colors.Panel,BackgroundTransparency=0.06,ZIndex=295},Screen),{BackgroundColor3="Panel",TextColor3="Text"})
-    corner(icon,16);stroke(icon,0.66);local iconDrag=drag(icon,icon)
+    corner(icon,7);stroke(icon,0.66);local iconLogo=logo(icon,28,296);iconLogo.AnchorPoint=Vector2.new(0.5,0.5);iconLogo.Position=UDim2.fromScale(0.5,0.5);local iconDrag=drag(icon,icon)
     local function resize()
         local v=workspace.CurrentCamera.ViewportSize
         local logical=root.Size
@@ -680,7 +690,13 @@ function L:CreateWindow(config)
     register(UIS.InputEnded:Connect(function(input)
         if resizing and (input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch) then resizing=false;tween(resizeGrip,{BackgroundTransparency=0.72},0.12) end
     end))
-    power.Activated:Connect(function() window:Minimize() end)
+    settingsButton.Activated:Connect(function() if window.SettingsTab then window.SettingsTab:Show() end end)
+    minimize.Activated:Connect(function() window:Minimize() end)
+    destroy.Activated:Connect(function() window:Destroy() end)
+    for _,control in ipairs({settingsButton,minimize,destroy}) do
+        control.MouseEnter:Connect(function() tween(control,{BackgroundTransparency=0.28},0.12) end)
+        control.MouseLeave:Connect(function() tween(control,{BackgroundTransparency=control==settingsButton and (window.SettingsTab and window.SettingsTab.Active and 0.28 or 0.65) or 0.6},0.12) end)
+    end
     search:GetPropertyChangedSignal("Text"):Connect(function()
         local q=search.Text:lower()
         for _,tab in ipairs(window.TabOrder) do for _,sub in ipairs(tab.SubtabOrder) do
@@ -692,13 +708,14 @@ function L:CreateWindow(config)
 
     function window:AddTab(info)
         info=type(info)=="string" and {Title=info} or info or {}
-        local title=info.Title or info.Name or "Tab";local tab={Title=title,Subtabs={},SubtabOrder={}}
+        local title=info.Title or info.Name or "Tab";local tab={Title=title,Subtabs={},SubtabOrder={},IsSettings=not not info.Settings}
         local button=bind(new("TextButton",{AutoButtonColor=false,Size=UDim2.fromOffset(46,40),BackgroundColor3=L.Colors.Dark,BackgroundTransparency=1,
-            Font=Enum.Font.GothamMedium,Text=info.IconText or title:sub(1,1):upper(),TextColor3=L.Colors.Text,TextSize=13},nav),{BackgroundColor3="Dark",TextColor3="Text"});corner(button,13)
+            Font=Enum.Font.GothamMedium,Text=info.IconText or title:sub(1,1):upper(),TextColor3=L.Colors.Text,TextSize=13,Visible=not info.Settings},nav),{BackgroundColor3="Dark",TextColor3="Text"});corner(button,5)
         function tab:Show()
             closePopups()
             for _,other in ipairs(window.TabOrder) do other:Hide() end
             self.Active=true;tween(button,{BackgroundTransparency=0.38})
+            tween(settingsButton,{BackgroundTransparency=self.IsSettings and 0.28 or 0.65,TextColor3=self.IsSettings and L.Colors.Text or L.Colors.Muted})
             for _,sub in ipairs(self.SubtabOrder) do sub.Button.Visible=true end
             if self.SubtabOrder[1] then self.SubtabOrder[1]:Show() end
         end
@@ -745,16 +762,16 @@ function L:CreateWindow(config)
         local function addTabbox(side)
             if not tab.DefaultSubtab then tab.DefaultSubtab=tab:AddSubtab("Main") end
             local column=tab.DefaultSubtab[side].Root
-            local container=bind(new("Frame",{BackgroundColor3=L.Colors.Card,BackgroundTransparency=0.27,
-                Size=UDim2.new(1,0,0,0),AutomaticSize=Enum.AutomaticSize.Y},column),{BackgroundColor3="Card"})
-            corner(container,17);stroke(container,0.76);pad(container,10,10,10,10)
+            local container=bind(new("Frame",{BackgroundColor3=L.Colors.Dark,BackgroundTransparency=0.16,
+                Size=UDim2.new(1,0,0,0),AutomaticSize=Enum.AutomaticSize.Y},column),{BackgroundColor3="Dark"})
+            corner(container,7);stroke(container,0.8);pad(container,10,10,10,10)
             local tabsRow=new("Frame",{BackgroundTransparency=1,Size=UDim2.new(1,0,0,32)},container)
             new("UIListLayout",{FillDirection=Enum.FillDirection.Horizontal,Padding=UDim.new(0,5)},tabsRow)
             local body=new("Frame",{BackgroundTransparency=1,Position=UDim2.fromOffset(0,38),Size=UDim2.new(1,0,0,0),AutomaticSize=Enum.AutomaticSize.Y},container)
             local box={Tabs={},Order={}}
             function box:AddTab(name)
                 local button=bind(new("TextButton",{AutoButtonColor=false,Size=UDim2.fromOffset(math.max(68,#name*7+18),30),
-                    BackgroundColor3=L.Colors.Control,BackgroundTransparency=0.45,Font=Enum.Font.Gotham,Text=name,TextColor3=L.Colors.Muted,TextSize=10},tabsRow),{BackgroundColor3="Control",TextColor3="Muted"});corner(button,11)
+                    BackgroundColor3=L.Colors.Control,BackgroundTransparency=0.45,Font=Enum.Font.Gotham,Text=name,TextColor3=L.Colors.Muted,TextSize=10},tabsRow),{BackgroundColor3="Control",TextColor3="Muted"});corner(button,4)
                 local holder=new("Frame",{BackgroundTransparency=1,Size=UDim2.new(1,0,0,0),AutomaticSize=Enum.AutomaticSize.Y,Visible=false},body)
                 local card=createCard(holder,"",window);card.Root.BackgroundTransparency=1
                 function card:Show()
@@ -772,7 +789,7 @@ function L:CreateWindow(config)
         function tab:AddRightTabbox() return addTabbox("Right") end
         local methods={"AddParagraph","AddLabel","AddDivider","AddButton","AddToggle","AddSlider","AddDropdown","AddInput","AddKeybind","AddKeyPicker","AddColorpicker","AddColorPicker","AddDependencyBox"}
         for _,method in ipairs(methods) do tab[method]=function(self,...) if not self.DefaultCard then self.DefaultCard=self:AddSection("") end return self.DefaultCard[method](self.DefaultCard,...) end end
-        window.Tabs[title]=tab;table.insert(window.TabOrder,tab);if #window.TabOrder==1 then tab:Show() end;return tab
+        window.Tabs[title]=tab;table.insert(window.TabOrder,tab);if info.Settings then window.SettingsTab=tab end;if #window.TabOrder==1 then tab:Show() end;return tab
     end
     function window:SelectTab(which) local tab=type(which)=="number" and self.TabOrder[which] or self.Tabs[which];if tab then tab:Show() end end
     function window:SetVisible(value)
@@ -801,12 +818,12 @@ function L:CreateWindow(config)
     end
     function window:Dialog(info)
         info=info or {};closePopups();local shade=ownPopup(new("TextButton",{AutoButtonColor=false,Text="",BackgroundColor3=Color3.new(),BackgroundTransparency=0.45,Size=UDim2.fromScale(1,1),ZIndex=250},Screen),window)
-        local box=bind(new("Frame",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.5),Size=UDim2.fromOffset(390,190),BackgroundColor3=L.Colors.Card,ZIndex=251},shade),{BackgroundColor3="Card"});corner(box,20);stroke(box,0.65);pad(box,18,18,16,16)
+        local box=bind(new("Frame",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.5),Size=UDim2.fromOffset(390,190),BackgroundColor3=L.Colors.Card,ZIndex=251},shade),{BackgroundColor3="Card"});corner(box,7);stroke(box,0.65);pad(box,18,18,16,16)
         local ttl=text(box,info.Title or "Dialog",15,L.Colors.Text,true);ttl.Size=UDim2.new(1,0,0,24)
         local body=text(box,info.Content or "",11,L.Colors.Muted);body.Position=UDim2.fromOffset(0,34);body.Size=UDim2.new(1,0,0,75);body.TextWrapped=true;body.TextYAlignment=Enum.TextYAlignment.Top
         local buttons=new("Frame",{AnchorPoint=Vector2.new(0,1),Position=UDim2.new(0,0,1,0),Size=UDim2.new(1,0,0,34),BackgroundTransparency=1},box)
         new("UIListLayout",{FillDirection=Enum.FillDirection.Horizontal,HorizontalAlignment=Enum.HorizontalAlignment.Right,Padding=UDim.new(0,8)},buttons)
-        for _,b in ipairs(info.Buttons or {{Title="Okay"}}) do local x=bind(new("TextButton",{Size=UDim2.fromOffset(92,32),BackgroundColor3=L.Colors.Control,Font=Enum.Font.Gotham,Text=b.Title or "Okay",TextColor3=L.Colors.Text,TextSize=11,ZIndex=252},buttons),{BackgroundColor3="Control",TextColor3="Text"});corner(x,14);x.Activated:Connect(function()callback(b.Callback);shade:Destroy()end) end
+        for _,b in ipairs(info.Buttons or {{Title="Okay"}}) do local x=bind(new("TextButton",{Size=UDim2.fromOffset(92,32),BackgroundColor3=L.Colors.Control,Font=Enum.Font.Gotham,Text=b.Title or "Okay",TextColor3=L.Colors.Text,TextSize=11,ZIndex=252},buttons),{BackgroundColor3="Control",TextColor3="Text"});corner(x,5);x.Activated:Connect(function()callback(b.Callback);shade:Destroy()end) end
         shade.Activated:Connect(function() shade:Destroy() end)
     end
     window.Root=root;window.Panel=panel;self.Window=window;table.insert(self.Windows,window)

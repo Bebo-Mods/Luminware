@@ -21,6 +21,7 @@ Luminware is a reusable Roblox UI library with Fluent-style presentation, Linori
 - Animated loading screen, window entrance, and interactive control transitions
 - Responsive resizing, mobile mode, draggable restore icon, and live performance watermark
 - Visual-only FOV circle and ESP-style preview APIs for interface demonstrations
+- Angular Luminware branding, square control styling, darker feature cards, and built-in bottom-rail settings
 - `Library.Options`, `Library.Toggles`, `OnChanged`, `OnClick`, `SetValue`, `SetVisible`, and `SetDisabled`
 
 ## Load
@@ -38,6 +39,7 @@ local Window=Library:CreateWindow({
 })
 
 local Home=Window:AddTab({Title="Home",IconText="S"})
+local Settings=Window:AddTab({Title="Settings",Settings=true})
 local Main=Home:AddSubtab("Subtab 1")
 local Controls=Main.Right:AddCard("Controls")
 

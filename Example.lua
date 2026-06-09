@@ -25,7 +25,7 @@ local Tabs={
     Layouts=Window:AddTab({Title="Layouts",IconText="L"}),
     Visuals=Window:AddTab({Title="Visuals",IconText="V"}),
     State=Window:AddTab({Title="State",IconText="D"}),
-    Settings=Window:AddTab({Title="Settings",IconText="G"}),
+    Settings=Window:AddTab({Title="Settings",Settings=true}),
 }
 Loader:SetProgress(0.32,"Building controls")
 task.wait(0.08)
