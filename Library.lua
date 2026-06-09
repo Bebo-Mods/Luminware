@@ -1,29 +1,51 @@
 -- Luminware Concept UI Library
 -- A reusable Roblox UI library built directly from the frosted home-control concept.
 
-local TS=game:GetService("TweenService")
-local UIS=game:GetService("UserInputService")
-local RS=game:GetService("RunService")
-local Players=game:GetService("Players")
-local Lighting=game:GetService("Lighting")
-local Stats=game:GetService("Stats")
-local MarketplaceService=game:GetService("MarketplaceService")
-local LocalizationService=game:GetService("LocalizationService")
+local CloneRef=typeof(cloneref)=="function" and cloneref or function(value) return value end
+local ProtectGui=typeof(protectgui)=="function" and protectgui
+    or (syn and typeof(syn.protect_gui)=="function" and syn.protect_gui)
+    or function() end
+
+local function service(name)
+    local object=game:GetService(name)
+    local success,reference=pcall(CloneRef,object)
+    return success and reference or object
+end
+
+local TS=service("TweenService")
+local UIS=service("UserInputService")
+local RS=service("RunService")
+local Players=service("Players")
+local Lighting=service("Lighting")
+local Stats=service("Stats")
+local MarketplaceService=service("MarketplaceService")
+local LocalizationService=service("LocalizationService")
+local CoreGui=service("CoreGui")
+local Workspace=service("Workspace")
 
 local Player=Players.LocalPlayer or Players.PlayerAdded:Wait()
 local Mouse=Player:GetMouse()
-local Parent=Player:WaitForChild("PlayerGui")
-pcall(function() if typeof(gethui)=="function" then Parent=gethui() end end)
+local PlayerGui=Player:WaitForChild("PlayerGui")
+local Parent=CoreGui
+pcall(function() if typeof(gethui)=="function" then Parent=CloneRef(gethui()) end end)
 
-local old=Parent:FindFirstChild("LuminwareConcept")
-if old then old:Destroy() end
+local checked={}
+for _,container in ipairs({Parent,CoreGui,PlayerGui}) do
+    if container and not checked[container] then
+        checked[container]=true
+        local old=container:FindFirstChild("LuminwareConcept")
+        if old then old:Destroy() end
+    end
+end
 
 local Screen=Instance.new("ScreenGui")
 Screen.Name="LuminwareConcept"
 Screen.IgnoreGuiInset=true
 Screen.ResetOnSpawn=false
 Screen.ZIndexBehavior=Enum.ZIndexBehavior.Sibling
-Screen.Parent=Parent
+pcall(ProtectGui,Screen)
+local parented=pcall(function() Screen.Parent=Parent end)
+if not parented or not Screen.Parent then Screen.Parent=PlayerGui end
 
 local L={
     Version="3.0.0",
@@ -157,7 +179,7 @@ local function drag(handle,target)
         if active and (movingMouse or movingTouch) then
             local d=pointer(i)-startPointer
             if d.Magnitude>3 then state.Moved=true end
-            local viewport=workspace.CurrentCamera.ViewportSize
+            local viewport=Workspace.CurrentCamera.ViewportSize
             local rawX=viewport.X*startPosition.X.Scale+startPosition.X.Offset+d.X
             local rawY=viewport.Y*startPosition.Y.Scale+startPosition.Y.Offset+d.Y
             local x=math.clamp(rawX,20-target.AbsoluteSize.X*(1-target.AnchorPoint.X),viewport.X-20+target.AbsoluteSize.X*target.AnchorPoint.X)
@@ -236,7 +258,7 @@ function L:GetSessionInfo()
         Health=humanoid and math.floor(humanoid.Health+0.5) or 0,MaxHealth=humanoid and math.floor(humanoid.MaxHealth+0.5) or 0,
         Executor=executor,Experience=ExperienceName,PlaceId=game.PlaceId,JobId=game.JobId,
         Players=#Players:GetPlayers(),MaxPlayers=Players.MaxPlayers,FPS=fps,Ping=ping,
-        Device=device,Locale=LocalizationService.RobloxLocaleId,ServerUptime=math.floor(workspace.DistributedGameTime),
+        Device=device,Locale=LocalizationService.RobloxLocaleId,ServerUptime=math.floor(Workspace.DistributedGameTime),
         Subscription=tostring(global.LuminwareSubscription or "Not configured"),
         SubscriptionLife=tostring(global.LuminwareSubscriptionLife or "Not configured"),
     }
@@ -654,7 +676,7 @@ local function createCard(column,title,window)
         register(UIS.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then svDown=false;hueDown=false end end))
         swatch.Activated:Connect(function()
             local opening=not pop.Visible;closePopups(pop)
-            pop.Position=UDim2.fromOffset(math.clamp(swatch.AbsolutePosition.X-194,8,workspace.CurrentCamera.ViewportSize.X-248),math.clamp(swatch.AbsolutePosition.Y+32,8,workspace.CurrentCamera.ViewportSize.Y-258));pop.Visible=opening
+            pop.Position=UDim2.fromOffset(math.clamp(swatch.AbsolutePosition.X-194,8,Workspace.CurrentCamera.ViewportSize.X-248),math.clamp(swatch.AbsolutePosition.Y+32,8,Workspace.CurrentCamera.ViewportSize.Y-258));pop.Visible=opening
         end)
         render(false)
         L.Options[index]=option;return option
@@ -733,14 +755,14 @@ function L:CreateWindow(config)
         Position=UDim2.fromOffset(18,70),Size=UDim2.fromOffset(48,48),BackgroundColor3=self.Colors.Panel,BackgroundTransparency=0.06,ZIndex=295},Screen),{BackgroundColor3="Panel",TextColor3="Text"})
     corner(icon,7);stroke(icon,0.66);local iconLogo=logo(icon,36,296);iconLogo.AnchorPoint=Vector2.new(0.5,0.5);iconLogo.Position=UDim2.fromScale(0.5,0.5);local iconDrag=drag(icon,icon)
     local function resize()
-        local v=workspace.CurrentCamera.ViewportSize
+        local v=Workspace.CurrentCamera.ViewportSize
         local logical=root.Size
         scale.Scale=math.min(1,v.X/(logical.X.Offset+36),v.Y/(logical.Y.Offset+36))
     end
     resize();local finalScale=scale.Scale
     if initiallyVisible then scale.Scale=finalScale*0.965;tween(scale,{Scale=finalScale},0.38);tween(panel,{BackgroundTransparency=0.17},0.32)
     else scale.Scale=finalScale;panel.BackgroundTransparency=0.17 end
-    register(workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(resize))
+    register(Workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(resize))
     local resizing,startPointer,startSize=false
     resizeGrip.InputBegan:Connect(function(input)
         if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
