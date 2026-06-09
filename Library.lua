@@ -127,7 +127,7 @@ local function new(class,props,parent)
     return object
 end
 local function corner(parent,r) return new("UICorner",{CornerRadius=UDim.new(0,r or 12)},parent) end
-local function stroke(parent,t) return bind(new("UIStroke",{Color=L.Colors.Outline,Transparency=t or 0.86,Thickness=1},parent),{Color="Outline"}) end
+local function stroke(parent,t) return bind(new("UIStroke",{ApplyStrokeMode=Enum.ApplyStrokeMode.Border,Color=L.Colors.Outline,Transparency=t or 0.86,Thickness=1},parent),{Color="Outline"}) end
 local function pad(parent,l,r,t,b) return new("UIPadding",{PaddingLeft=UDim.new(0,l or 0),PaddingRight=UDim.new(0,r or 0),PaddingTop=UDim.new(0,t or 0),PaddingBottom=UDim.new(0,b or 0)},parent) end
 local function logo(parent,size,z)
     local mark=new("Frame",{BackgroundTransparency=1,Size=UDim2.fromOffset(size,size),ZIndex=z or 2},parent)
@@ -421,17 +421,17 @@ local function createCard(column,title,window)
         Size=UDim2.new(1,0,0,0),AutomaticSize=Enum.AutomaticSize.Y},column)
         ,{BackgroundColor3="Dark"})
     card:SetAttribute("SearchText",title or "")
-    corner(card,7);stroke(card,0.8);pad(card,14,14,12,14)
+    corner(card,7);stroke(card,0.76);pad(card,14,14,12,14)
     local layout=new("UIListLayout",{Padding=UDim.new(0,8),SortOrder=Enum.SortOrder.LayoutOrder},card)
     local api={Title=title or "",Root=card,Window=window}
     if title and title~="" then
-        local header=text(card,title,13,L.Colors.Text,true);header.Size=UDim2.new(1,0,0,22);header.LayoutOrder=-100
+        local header=text(card,title,14,L.Colors.Text,true);header.Size=UDim2.new(1,0,0,24);header.LayoutOrder=-100
     end
     local function row(height)
         return new("Frame",{BackgroundTransparency=1,Size=UDim2.new(1,0,0,height or 38)},card)
     end
     local function rowTitle(r,info)
-        local label=text(r,info.Title or info.Text or info.Label or "",12,L.Colors.Text)
+        local label=text(r,info.Title or info.Text or info.Label or "",13,L.Colors.Text)
         label.Size=UDim2.new(0.58,0,1,0)
         if info.Tooltip then
             local tip=ownPopup(bind(new("Frame",{Visible=false,BackgroundColor3=L.Colors.Card,BackgroundTransparency=0.08,
@@ -448,15 +448,15 @@ local function createCard(column,title,window)
     function api:AddParagraph(info)
         info=type(info)=="string" and {Title=info} or info or {}
         local r=row(info.Content and 58 or 30)
-        local a=text(r,info.Title or "Paragraph",12,L.Colors.Text,true);a.Size=UDim2.new(1,0,0,22)
+        local a=text(r,info.Title or "Paragraph",13,L.Colors.Text,true);a.Size=UDim2.new(1,0,0,22)
         if info.Content then
-            local b=text(r,info.Content,10,L.Colors.Muted);b.Position=UDim2.fromOffset(0,23);b.Size=UDim2.new(1,0,1,-23);b.TextWrapped=true;b.TextYAlignment=Enum.TextYAlignment.Top
+            local b=text(r,info.Content,11,L.Colors.Muted);b.Position=UDim2.fromOffset(0,23);b.Size=UDim2.new(1,0,1,-23);b.TextWrapped=true;b.TextYAlignment=Enum.TextYAlignment.Top
         end
         return r
     end
     function api:AddLabel(value,wrap)
         local r=row(wrap and 54 or 28)
-        local label=text(r,value,11,L.Colors.Text);label.Size=UDim2.fromScale(1,1);label.TextWrapped=not not wrap;label.TextYAlignment=Enum.TextYAlignment.Top
+        local label=text(r,value,12,L.Colors.Text);label.Size=UDim2.fromScale(1,1);label.TextWrapped=not not wrap;label.TextYAlignment=Enum.TextYAlignment.Top
         local result={Root=r}
         function result:SetText(v) label.Text=tostring(v) end
         function result:AddColorPicker(index,info) return api:AddColorpicker(index,info) end
@@ -465,8 +465,8 @@ local function createCard(column,title,window)
     end
     function api:AddStat(label,value,wrap)
         local r=row(wrap and 48 or 32)
-        local key=text(r,tostring(label or ""),10,L.Colors.Muted,true);key.Size=UDim2.new(0.42,0,1,-1)
-        local resultText=text(r,tostring(value or ""),11,L.Colors.Text,true);resultText.Position=UDim2.new(0.42,10,0,wrap and 5 or 0);resultText.Size=UDim2.new(0.58,-10,1,wrap and -6 or -1)
+        local key=text(r,tostring(label or ""),11,L.Colors.Muted,true);key.Size=UDim2.new(0.42,0,1,-1)
+        local resultText=text(r,tostring(value or ""),12,L.Colors.Text,true);resultText.Position=UDim2.new(0.42,10,0,wrap and 5 or 0);resultText.Size=UDim2.new(0.58,-10,1,wrap and -6 or -1)
         resultText.TextXAlignment=Enum.TextXAlignment.Right;resultText.TextWrapped=not not wrap;resultText.TextYAlignment=wrap and Enum.TextYAlignment.Top or Enum.TextYAlignment.Center
         local line=bind(new("Frame",{AnchorPoint=Vector2.new(0,1),Position=UDim2.new(0,0,1,0),Size=UDim2.new(1,0,0,1),BackgroundTransparency=0.88},r),{BackgroundColor3="Outline"})
         local result={Root=r}
@@ -485,7 +485,7 @@ local function createCard(column,title,window)
         local r=row(38);rowTitle(r,info)
         local b=bind(new("TextButton",{AnchorPoint=Vector2.new(1,0.5),Position=UDim2.new(1,0,0.5,0),Size=UDim2.fromOffset(92,30),
             AutoButtonColor=false,BackgroundColor3=L.Colors.Control,BackgroundTransparency=0.25,
-            Font=Enum.Font.Gotham,Text=info.Action or "Action",TextColor3=L.Colors.Text,TextSize=11},r),{BackgroundColor3="Control",TextColor3="Text"})
+            Font=Enum.Font.Gotham,Text=info.Action or "Action",TextColor3=L.Colors.Text,TextSize=12},r),{BackgroundColor3="Control",TextColor3="Text"})
         corner(b,6);stroke(b,0.78)
         b.MouseEnter:Connect(function() tween(b,{BackgroundTransparency=0.08},0.14) end)
         b.MouseLeave:Connect(function() tween(b,{BackgroundTransparency=0.25},0.14) end)
@@ -554,7 +554,7 @@ local function createCard(column,title,window)
         local option={Value=initial,Values=values,Multi=not not info.Multi,Type="Dropdown"}
         local r=row(62);local t=rowTitle(r,info);t.Size=UDim2.new(1,0,0,20)
         local box=bind(new("TextButton",{AutoButtonColor=false,Position=UDim2.fromOffset(0,25),Size=UDim2.new(1,0,0,31),
-            BackgroundColor3=L.Colors.Control,BackgroundTransparency=0.27,Font=Enum.Font.Gotham,Text="",TextColor3=L.Colors.Text,TextSize=11,TextXAlignment=Enum.TextXAlignment.Left},r),{BackgroundColor3="Control",TextColor3="Text"});corner(box,5);stroke(box,0.8);pad(box,11,11)
+            BackgroundColor3=L.Colors.Control,BackgroundTransparency=0.27,Font=Enum.Font.Gotham,Text="",TextColor3=L.Colors.Text,TextSize=12,TextXAlignment=Enum.TextXAlignment.Left},r),{BackgroundColor3="Control",TextColor3="Text"});corner(box,5);stroke(box,0.8);pad(box,11,11)
         finishOption(option,r)
         local pop=bind(new("ScrollingFrame",{Visible=false,Position=UDim2.fromOffset(0,62),BackgroundColor3=L.Colors.Card,BackgroundTransparency=0.08,
             Size=UDim2.new(1,0,0,0),CanvasSize=UDim2.fromOffset(0,0),AutomaticCanvasSize=Enum.AutomaticSize.Y,
@@ -577,7 +577,7 @@ local function createCard(column,title,window)
                 local selected=option.Multi and option.Value[v] or option.Value==v
                 local item=new("TextButton",{AutoButtonColor=false,BackgroundColor3=selected and L.Colors.White or L.Colors.Control,
                     BackgroundTransparency=selected and 0 or 0.35,Size=UDim2.new(1,0,0,28),Font=Enum.Font.Gotham,Text=tostring(v),
-                    TextColor3=selected and L.Colors.Dark or L.Colors.Text,TextSize=10,ZIndex=201},pop);corner(item,4)
+                    TextColor3=selected and L.Colors.Dark or L.Colors.Text,TextSize=11,ZIndex=201},pop);corner(item,4)
                 item.Activated:Connect(function()
                     if option.Multi then option.Value[v]=not option.Value[v] else option.Value=v;close() end
                     render();callback(info.Callback,option.Value);callback(option.Changed,option.Value)
@@ -604,7 +604,7 @@ local function createCard(column,title,window)
         finishOption(option,r)
         local box=bind(new("TextBox",{Position=UDim2.fromOffset(0,25),Size=UDim2.new(1,0,0,31),BackgroundColor3=L.Colors.Control,BackgroundTransparency=0.27,
             ClearTextOnFocus=false,Font=Enum.Font.Gotham,Text=option.Value,PlaceholderText=info.Placeholder or "",TextColor3=L.Colors.Text,
-            PlaceholderColor3=L.Colors.Muted,TextSize=11,TextXAlignment=Enum.TextXAlignment.Left},r),{BackgroundColor3="Control",TextColor3="Text",PlaceholderColor3="Muted"});corner(box,5);stroke(box,0.8);pad(box,11,11)
+            PlaceholderColor3=L.Colors.Muted,TextSize=12,TextXAlignment=Enum.TextXAlignment.Left},r),{BackgroundColor3="Control",TextColor3="Text",PlaceholderColor3="Muted"});corner(box,5);stroke(box,0.8);pad(box,11,11)
         function option:SetValue(v) self.Value=tostring(v or "");box.Text=self.Value end
         function option:OnChanged(fn) self.Changed=fn;fn(self.Value) end
         function option:RefreshTheme() box.BackgroundColor3=L.Colors.Control end
@@ -705,26 +705,33 @@ local function createCard(column,title,window)
     return api
 end
 
-local function makeColumn(parent,x,w,window)
-    local col=new("ScrollingFrame",{BackgroundTransparency=1,BorderSizePixel=0,Position=UDim2.new(x,0,0,0),Size=UDim2.new(w,-6,1,0),
+local function makeColumn(parent,x,w,window,side)
+    local offset=x==0 and 2 or 5
+    local col=new("ScrollingFrame",{BackgroundTransparency=1,BorderSizePixel=0,ClipsDescendants=true,Position=UDim2.new(x,offset,0,2),Size=UDim2.new(w,-9,1,-4),
         CanvasSize=UDim2.fromOffset(0,0),AutomaticCanvasSize=Enum.AutomaticSize.Y,ScrollBarThickness=2,ScrollBarImageColor3=L.Colors.Accent},parent)
+    pad(col,2,4,2,4)
     new("UIListLayout",{Padding=UDim.new(0,10),SortOrder=Enum.SortOrder.LayoutOrder},col)
-    return {Root=col,AddCard=function(_,title)return createCard(col,title,window)end}
+    return {Root=col,Side=side,AddCard=function(_,title)
+        local card=createCard(col,title,window)
+        card.Root:SetAttribute("LuminwareColumn",side)
+        return card
+    end}
 end
 
 function L:CreateWindow(config)
     config=config or {};local width=config.Size and config.Size.X.Offset or 900;local height=config.Size and config.Size.Y.Offset or 600
     local initiallyVisible=config.Visible~=false
-    local window={Tabs={},TabOrder={},MobileMode=not not config.MobileMode,SmallIconEnabled=config.SmallIcon~=false,Visible=initiallyVisible}
+    local window={Tabs={},TabOrder={},NavButtons={},MobileMode=not not config.MobileMode,SmallIconEnabled=config.SmallIcon~=false,Visible=initiallyVisible}
     local desktopSize=Vector2.new(width,height)
-    local mobileSize=Vector2.new(config.MobileSize and config.MobileSize.X.Offset or 720,config.MobileSize and config.MobileSize.Y.Offset or 480)
+    local mobileSize=Vector2.new(config.MobileSize and config.MobileSize.X.Offset or 820,config.MobileSize and config.MobileSize.Y.Offset or 520)
     if window.MobileMode then width=mobileSize.X;height=mobileSize.Y end
     local root=new("Frame",{Visible=initiallyVisible,AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.5),Size=UDim2.fromOffset(width,height),BackgroundTransparency=1},Screen)
     local scale=new("UIScale",{Scale=0.965},root)
     local panel=bind(new("Frame",{Size=UDim2.fromScale(1,1),BackgroundColor3=self.Colors.Panel,BackgroundTransparency=1,ClipsDescendants=true},root),{BackgroundColor3="Panel"});corner(panel,12);stroke(panel,0.78)
     local rail=bind(new("Frame",{Position=UDim2.fromOffset(14,14),Size=UDim2.new(0,72,1,-28),BackgroundColor3=self.Colors.Rail,BackgroundTransparency=0.18},panel),{BackgroundColor3="Rail"});corner(rail,9);stroke(rail,0.8)
     local brand=logo(rail,34,3);brand.AnchorPoint=Vector2.new(0.5,0);brand.Position=UDim2.new(0.5,0,0,13)
-    local nav=new("Frame",{Position=UDim2.fromOffset(10,62),Size=UDim2.new(1,-20,1,-124),BackgroundTransparency=1},rail)
+    local nav=new("ScrollingFrame",{Position=UDim2.fromOffset(8,62),Size=UDim2.new(1,-16,1,-124),BackgroundTransparency=1,BorderSizePixel=0,
+        CanvasSize=UDim2.fromOffset(0,0),AutomaticCanvasSize=Enum.AutomaticSize.Y,ScrollBarThickness=0,ScrollingDirection=Enum.ScrollingDirection.Y},rail)
     new("UIListLayout",{Padding=UDim.new(0,8),HorizontalAlignment=Enum.HorizontalAlignment.Center,SortOrder=Enum.SortOrder.LayoutOrder},nav)
     local settingsButton=bind(new("TextButton",{AnchorPoint=Vector2.new(0.5,1),Position=UDim2.new(0.5,0,1,-12),Size=UDim2.fromOffset(44,38),BackgroundColor3=self.Colors.Dark,BackgroundTransparency=0.65,
         Font=Enum.Font.GothamMedium,Text="",TextColor3=self.Colors.Muted,TextSize=9},rail),{BackgroundColor3="Dark",TextColor3="Muted"});corner(settingsButton,5);stroke(settingsButton,0.86)
@@ -733,9 +740,10 @@ function L:CreateWindow(config)
     local content=new("Frame",{Position=UDim2.fromOffset(104,14),Size=UDim2.new(1,-118,1,-28),BackgroundTransparency=1},panel)
     local header=new("Frame",{Size=UDim2.new(1,0,0,54),BackgroundTransparency=1},content)
     local dragSurface=new("TextButton",{AutoButtonColor=false,Text="",BackgroundTransparency=1,Size=UDim2.fromScale(1,1),ZIndex=1},header);drag(dragSurface,root)
-    local subtabs=new("Frame",{Position=UDim2.fromOffset(0,4),Size=UDim2.new(0.42,0,0,42),BackgroundTransparency=1,ZIndex=2},header)
+    local subtabs=new("ScrollingFrame",{Position=UDim2.fromOffset(0,4),Size=UDim2.new(1,-390,0,42),BackgroundTransparency=1,BorderSizePixel=0,
+        CanvasSize=UDim2.fromOffset(0,0),AutomaticCanvasSize=Enum.AutomaticSize.X,ScrollBarThickness=0,ScrollingDirection=Enum.ScrollingDirection.X,ZIndex=2},header)
     local subLayout=new("UIListLayout",{FillDirection=Enum.FillDirection.Horizontal,Padding=UDim.new(0,8),SortOrder=Enum.SortOrder.LayoutOrder},subtabs)
-    local searchHolder=bind(new("Frame",{AnchorPoint=Vector2.new(0.5,0),Position=UDim2.new(0.68,0,0,5),Size=UDim2.fromOffset(280,35),
+    local searchHolder=bind(new("Frame",{AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,-84,0,5),Size=UDim2.fromOffset(280,35),
         BackgroundColor3=self.Colors.Dark,BackgroundTransparency=0.34,ZIndex=2},header),{BackgroundColor3="Dark"});corner(searchHolder,5);stroke(searchHolder,0.88)
     local searchIcon=bind(new("ImageLabel",{Position=UDim2.fromOffset(12,10),Size=UDim2.fromOffset(15,15),BackgroundTransparency=1,Image=self.Icons.Search,ImageColor3=self.Colors.Muted,ZIndex=3},searchHolder),{ImageColor3="Muted"})
     local search=bind(new("TextBox",{Position=UDim2.fromOffset(36,0),Size=UDim2.new(1,-44,1,0),BackgroundTransparency=1,
@@ -754,7 +762,44 @@ function L:CreateWindow(config)
     local icon=bind(new("TextButton",{Visible=false,AutoButtonColor=false,Text="",Font=Enum.Font.GothamMedium,TextSize=14,TextColor3=self.Colors.Text,
         Position=UDim2.fromOffset(18,70),Size=UDim2.fromOffset(48,48),BackgroundColor3=self.Colors.Panel,BackgroundTransparency=0.06,ZIndex=295},Screen),{BackgroundColor3="Panel",TextColor3="Text"})
     corner(icon,7);stroke(icon,0.66);local iconLogo=logo(icon,36,296);iconLogo.AnchorPoint=Vector2.new(0.5,0.5);iconLogo.Position=UDim2.fromScale(0.5,0.5);local iconDrag=drag(icon,icon)
+    local function layoutSubtab(sub,mobile)
+        if not sub.Left or not sub.Right then return end
+        local left,right=sub.Left.Root,sub.Right.Root
+        if mobile then
+            for _,child in ipairs(right:GetChildren()) do
+                if child:IsA("Frame") then
+                    child:SetAttribute("LuminwareColumn","Right")
+                    child.Parent=left
+                end
+            end
+            left.Position=UDim2.fromOffset(2,2);left.Size=UDim2.new(1,-4,1,-4);right.Visible=false
+        else
+            for _,child in ipairs(left:GetChildren()) do
+                if child:IsA("Frame") and child:GetAttribute("LuminwareColumn")=="Right" then child.Parent=right end
+            end
+            left.Position=UDim2.new(0,2,0,2);left.Size=UDim2.new(0.5,-9,1,-4)
+            right.Position=UDim2.new(0.5,5,0,2);right.Size=UDim2.new(0.5,-9,1,-4);right.Visible=true
+        end
+    end
+    local function applyResponsive()
+        local mobile=window.MobileMode
+        rail.Position=UDim2.fromOffset(mobile and 10 or 14,mobile and 10 or 14)
+        rail.Size=UDim2.new(0,mobile and 58 or 72,1,mobile and -20 or -28)
+        brand.Size=UDim2.fromOffset(mobile and 28 or 34,mobile and 28 or 34)
+        brand.Position=UDim2.new(0.5,0,0,mobile and 10 or 13)
+        nav.Position=UDim2.fromOffset(mobile and 6 or 8,mobile and 50 or 62)
+        nav.Size=UDim2.new(1,mobile and -12 or -16,1,mobile and -104 or -124)
+        settingsButton.Size=UDim2.fromOffset(mobile and 38 or 44,mobile and 34 or 38)
+        settingsButton.Position=UDim2.new(0.5,0,1,mobile and -9 or -12)
+        content.Position=UDim2.fromOffset(mobile and 80 or 104,mobile and 10 or 14)
+        content.Size=UDim2.new(1,mobile and -90 or -118,1,mobile and -20 or -28)
+        searchHolder.Size=UDim2.fromOffset(mobile and 200 or 280,35)
+        subtabs.Size=UDim2.new(1,mobile and -310 or -390,0,42)
+        for _,button in ipairs(window.NavButtons) do button.Size=UDim2.fromOffset(mobile and 38 or 46,mobile and 36 or 40) end
+        for _,tab in ipairs(window.TabOrder) do for _,sub in ipairs(tab.SubtabOrder) do layoutSubtab(sub,mobile) end end
+    end
     local function resize()
+        applyResponsive()
         local v=Workspace.CurrentCamera.ViewportSize
         local logical=root.Size
         scale.Scale=math.min(1,v.X/(logical.X.Offset+36),v.Y/(logical.Y.Offset+36))
@@ -803,6 +848,7 @@ function L:CreateWindow(config)
         local title=info.Title or info.Name or "Tab";local tab={Title=title,Subtabs={},SubtabOrder={},IsSettings=not not info.Settings}
         local button=bind(new("TextButton",{AutoButtonColor=false,Size=UDim2.fromOffset(46,40),BackgroundColor3=L.Colors.Dark,BackgroundTransparency=1,
             Font=Enum.Font.GothamMedium,Text="",TextColor3=L.Colors.Text,TextSize=13,Visible=not info.Settings},nav),{BackgroundColor3="Dark",TextColor3="Text"});corner(button,5)
+        table.insert(window.NavButtons,button);applyResponsive()
         local asset=info.Icon or L.Icons[title]
         local tabIcon=asset and bind(new("ImageLabel",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.5),Size=UDim2.fromOffset(18,18),
             BackgroundTransparency=1,Image=asset,ImageColor3=L.Colors.Muted},button),{ImageColor3="Muted"}) or text(button,info.IconText or title:sub(1,1):upper(),12,L.Colors.Muted,true)
@@ -834,9 +880,16 @@ function L:CreateWindow(config)
                 Font=Enum.Font.Gotham,Text=name,TextColor3=L.Colors.Muted,TextSize=12,Visible=tab.Active},subtabs)
             local line=bind(new("Frame",{AnchorPoint=Vector2.new(0.5,1),Position=UDim2.new(0.5,0,1,0),Size=UDim2.new(1,-18,0,1),BackgroundColor3=L.Colors.Accent,BackgroundTransparency=1},sb),{BackgroundColor3="Accent"})
             local page=new("Frame",{Size=UDim2.fromScale(1,1),BackgroundTransparency=1,Visible=false},pages)
-            sub.Root=page;sub.Button=sb;sub.Left=makeColumn(page,0,0.5,window);sub.Right=makeColumn(page,0.5,0.5,window)
+            sub.Root=page;sub.Button=sb;sub.Left=makeColumn(page,0,0.5,window,"Left");sub.Right=makeColumn(page,0.5,0.5,window,"Right")
+            local addRightCard=sub.Right.AddCard
+            function sub.Right:AddCard(cardTitle)
+                local card=addRightCard(self,cardTitle)
+                if window.MobileMode then card.Root.Parent=sub.Left.Root end
+                return card
+            end
             function sub:Show()
                 for _,other in ipairs(tab.SubtabOrder) do other:Hide() end
+                layoutSubtab(self,window.MobileMode)
                 page.Visible=true;page.Position=UDim2.fromOffset(7,0);self.Active=true
                 tween(page,{Position=UDim2.fromOffset(0,0)},0.28);tween(sb,{TextColor3=L.Colors.Text});tween(line,{BackgroundTransparency=0})
             end
@@ -868,6 +921,8 @@ function L:CreateWindow(config)
             local column=tab.DefaultSubtab[side].Root
             local container=bind(new("Frame",{BackgroundColor3=L.Colors.Dark,BackgroundTransparency=0.16,
                 Size=UDim2.new(1,0,0,0),AutomaticSize=Enum.AutomaticSize.Y},column),{BackgroundColor3="Dark"})
+            container:SetAttribute("LuminwareColumn",side)
+            if window.MobileMode and side=="Right" then container.Parent=tab.DefaultSubtab.Left.Root end
             corner(container,7);stroke(container,0.8);pad(container,10,10,10,10)
             local tabsRow=new("Frame",{BackgroundTransparency=1,Size=UDim2.new(1,0,0,32)},container)
             new("UIListLayout",{FillDirection=Enum.FillDirection.Horizontal,Padding=UDim.new(0,5)},tabsRow)
