@@ -23,37 +23,56 @@ local Window=Library:CreateWindow({
 
 local Tabs={
     Home=Window:AddTab({Title="Home"}),
-    Controls=Window:AddTab({Title="Controls"}),
-    Layouts=Window:AddTab({Title="Layouts"}),
-    Visuals=Window:AddTab({Title="Visuals"}),
-    State=Window:AddTab({Title="State"}),
+    Aim=Window:AddTab({Title="Aim"}),
+    Movement=Window:AddTab({Title="Movement"}),
+    Misc=Window:AddTab({Title="Misc"}),
+    Farms=Window:AddTab({Title="Farms"}),
     Settings=Window:AddTab({Title="Settings",Settings=true}),
 }
+Tabs.Controls=Tabs.Aim
+Tabs.Layouts=Tabs.Movement
+Tabs.Visuals=Tabs.Misc
+Tabs.State=Tabs.Farms
 Loader:SetProgress(0.32,"Building controls")
 task.wait(0.08)
 
--- Original concept layout
-local Main=Tabs.Home:AddSubtab("Subtab 1")
-local Second=Tabs.Home:AddSubtab("Subtab 2")
+-- Home dashboard
+local Dashboard=Tabs.Home:AddSubtab("Dashboard")
+local PlayerInfo=Dashboard.Left:AddCard("Player")
+local PlayerName=PlayerInfo:AddLabel("")
+local PlayerAccount=PlayerInfo:AddLabel("")
+local PlayerStatus=PlayerInfo:AddLabel("")
+local PlayerExecutor=PlayerInfo:AddLabel("")
+local Subscription=PlayerInfo:AddLabel("")
+local SubscriptionLife=PlayerInfo:AddLabel("")
 
-local Things=Main.Left:AddCard("Things")
-Things:AddToggle("Thing1",{Text="Thing 1",Default=true})
-Things:AddToggle("Thing2",{Text="Thing 2",Default=false})
-Things:AddSlider("Thing3",{Text="Thing 3",Min=0,Max=100,Default=72,Rounding=0})
+local SessionInfo=Dashboard.Right:AddCard("Session")
+local Experience=SessionInfo:AddLabel("")
+local ServerPopulation=SessionInfo:AddLabel("")
+local Performance=SessionInfo:AddLabel("")
+local Environment=SessionInfo:AddLabel("")
+local Uptime=SessionInfo:AddLabel("")
+local Place=SessionInfo:AddLabel("")
+local Job=SessionInfo:AddLabel("",true)
 
-local Controls=Main.Right:AddCard("Controls")
-Controls:AddToggle("Enabled",{Text="Toggle",Default=true})
-Controls:AddSlider("Amount",{Text="Slider",Min=0,Max=100,Default=64,Rounding=0})
-Controls:AddButton("Button",function() Library:Notify({Title="Action",Content="Button pressed"}) end)
-
-local Modules=Main.Right:AddCard("Module One")
-Modules:AddLabel("Actions")
-Modules:AddDropdown("ModuleAction",{Text="Action",Values={"One","Two","Three","Four"},Default=2})
-
-Second.Left:AddCard("Second page"):AddParagraph({
-    Title="Subtabs",
-    Content="Every navigation page can contain multiple concept-style subtabs.",
-})
+local function refreshDashboard()
+    local info=Library:GetSessionInfo()
+    PlayerName:SetText(("Player: %s  (@%s)"):format(info.DisplayName,info.Username))
+    PlayerAccount:SetText(("User ID: %s  |  Account age: %d days"):format(info.UserId,info.AccountAge))
+    PlayerStatus:SetText(("Membership: %s  |  Team: %s  |  Health: %d/%d"):format(info.Membership,info.Team,info.Health,info.MaxHealth))
+    PlayerExecutor:SetText("Executor: "..info.Executor)
+    Subscription:SetText("Subscription: "..info.Subscription)
+    SubscriptionLife:SetText("Subscription life: "..info.SubscriptionLife)
+    Experience:SetText("Experience: "..info.Experience)
+    ServerPopulation:SetText(("Players: %d / %d"):format(info.Players,info.MaxPlayers))
+    Performance:SetText(("Client FPS: %d  |  Ping: %sms"):format(info.FPS,info.Ping))
+    Environment:SetText(("Input: %s  |  Locale: %s"):format(info.Device,info.Locale))
+    Uptime:SetText(("Server uptime: %02d:%02d:%02d"):format(math.floor(info.ServerUptime/3600),math.floor(info.ServerUptime/60)%60,info.ServerUptime%60))
+    Place:SetText("Place ID: "..info.PlaceId)
+    Job:SetText("Server Job ID: "..(info.JobId~="" and info.JobId or "Studio / unavailable"))
+end
+refreshDashboard()
+task.spawn(function() while not Library.Unloaded and Library.Window and Library.Window.Root.Parent do refreshDashboard();task.wait(1) end end)
 
 -- Complete controls showcase
 local Basic=Tabs.Controls:AddLeftGroupbox("Basic controls")

@@ -8,6 +8,7 @@ local Players=game:GetService("Players")
 local Lighting=game:GetService("Lighting")
 local Stats=game:GetService("Stats")
 local MarketplaceService=game:GetService("MarketplaceService")
+local LocalizationService=game:GetService("LocalizationService")
 
 local Player=Players.LocalPlayer or Players.PlayerAdded:Wait()
 local Mouse=Player:GetMouse()
@@ -34,11 +35,13 @@ local L={
     Popups={},
     PopupClosers={},
     PopupTriggers={},
+    Overlays={},
     OnUnloadCallbacks={},
     Unloaded=false,
     Theme="Concept",
     Icons={
-        Home="rbxassetid://10723407389",Controls="rbxassetid://10734963191",Layouts="rbxassetid://10723424646",
+        Home="rbxassetid://10723407389",Aim="rbxassetid://10709818534",Movement="rbxassetid://10734900011",
+        Misc="rbxassetid://10747383470",Farms="rbxassetid://10734965572",Controls="rbxassetid://10734963191",Layouts="rbxassetid://10723424646",
         Visuals="rbxassetid://10723346959",State="rbxassetid://10709818996",Settings="rbxassetid://10734950309",
         Search="rbxassetid://10734943674",Minimize="rbxassetid://10734896206",Close="rbxassetid://10747384394",
     },
@@ -86,6 +89,11 @@ local function ownPopup(popup,window,closer,trigger)
     L.PopupTriggers[popup]=trigger
     popup.Destroying:Connect(function() L.Popups[popup]=nil;L.PopupClosers[popup]=nil;L.PopupTriggers[popup]=nil end)
     return popup
+end
+local function ownOverlay(object)
+    L.Overlays[object]=true
+    object.Destroying:Connect(function() L.Overlays[object]=nil end)
+    return object
 end
 
 local function new(class,props,parent)
@@ -184,8 +192,8 @@ register(UIS.InputBegan:Connect(function(input)
     end
 end))
 
-local Watermark=bind(new("Frame",{Visible=false,Active=true,Position=UDim2.fromOffset(12,12),Size=UDim2.fromOffset(410,30),
-    BackgroundColor3=L.Colors.Card,BackgroundTransparency=0.12,ZIndex=290},Screen),{BackgroundColor3="Card"})
+local Watermark=ownOverlay(bind(new("Frame",{Visible=false,Active=true,Position=UDim2.fromOffset(12,12),Size=UDim2.fromOffset(410,30),
+    BackgroundColor3=L.Colors.Card,BackgroundTransparency=0.12,ZIndex=290},Screen),{BackgroundColor3="Card"}))
 corner(Watermark,5);stroke(Watermark,0.68)
 local WatermarkText=text(Watermark,"Luminware",10,L.Colors.Text,true);WatermarkText.Position=UDim2.fromOffset(11,0);WatermarkText.Size=UDim2.new(1,-22,1,0)
 local WatermarkPrefix="Luminware"
@@ -211,6 +219,28 @@ task.spawn(function()
 end)
 function L:SetWatermark(value) WatermarkPrefix=tostring(value) end
 function L:SetWatermarkVisibility(value) Watermark.Visible=not not value end
+function L:GetSessionInfo()
+    local ping="?"
+    pcall(function() ping=Stats.Network.ServerStatsItem["Data Ping"]:GetValueString():match("[%d%.]+") or "?" end)
+    local executor="Unknown"
+    pcall(function()
+        if typeof(identifyexecutor)=="function" then executor=tostring(identifyexecutor())
+        elseif typeof(getexecutorname)=="function" then executor=tostring(getexecutorname()) end
+    end)
+    local global=typeof(getgenv)=="function" and getgenv() or {}
+    local humanoid=Player.Character and Player.Character:FindFirstChildOfClass("Humanoid")
+    local device=UIS.TouchEnabled and "Touch" or UIS.GamepadEnabled and "Gamepad" or "Keyboard / Mouse"
+    return {
+        DisplayName=Player.DisplayName,Username=Player.Name,UserId=Player.UserId,AccountAge=Player.AccountAge,
+        Membership=Player.MembershipType.Name,Team=Player.Team and Player.Team.Name or "None",
+        Health=humanoid and math.floor(humanoid.Health+0.5) or 0,MaxHealth=humanoid and math.floor(humanoid.MaxHealth+0.5) or 0,
+        Executor=executor,Experience=ExperienceName,PlaceId=game.PlaceId,JobId=game.JobId,
+        Players=#Players:GetPlayers(),MaxPlayers=Players.MaxPlayers,FPS=fps,Ping=ping,
+        Device=device,Locale=LocalizationService.RobloxLocaleId,ServerUptime=math.floor(workspace.DistributedGameTime),
+        Subscription=tostring(global.LuminwareSubscription or "Not configured"),
+        SubscriptionLife=tostring(global.LuminwareSubscriptionLife or "Not configured"),
+    }
+end
 function L:OnUnload(fn) table.insert(self.OnUnloadCallbacks,fn) end
 
 local KeybindFrame=bind(new("Frame",{Visible=false,Position=UDim2.fromOffset(12,52),Size=UDim2.fromOffset(220,0),
@@ -309,8 +339,8 @@ end
 
 function L:CreateFOVCircle(info)
     info=info or {}
-    local circle=new("Frame",{Visible=not not info.Visible,AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.5),
-        Size=UDim2.fromOffset((info.Radius or 120)*2,(info.Radius or 120)*2),BackgroundTransparency=1,ZIndex=280},Screen)
+    local circle=ownOverlay(new("Frame",{Visible=not not info.Visible,AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.5),
+        Size=UDim2.fromOffset((info.Radius or 120)*2,(info.Radius or 120)*2),BackgroundTransparency=1,ZIndex=280},Screen))
     corner(circle,999);local outline=bind(new("UIStroke",{Color=info.Color or self.Colors.Accent,Transparency=info.Transparency or 0.18,Thickness=info.Thickness or 1.5},circle),{Color="Accent"})
     local api={Root=circle,Radius=info.Radius or 120}
     function api:SetVisible(value) circle.Visible=not not value end
@@ -322,8 +352,8 @@ end
 
 function L:CreateESPPreview(info)
     info=info or {}
-    local box=new("Frame",{Visible=not not info.Visible,AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.5),
-        Size=UDim2.fromOffset(130,190),BackgroundTransparency=1,ZIndex=281},Screen)
+    local box=ownOverlay(new("Frame",{Visible=not not info.Visible,AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.5),
+        Size=UDim2.fromOffset(130,190),BackgroundTransparency=1,ZIndex=281},Screen))
     local outline=bind(new("UIStroke",{Color=self.Colors.Accent,Transparency=0.08,Thickness=1.5},box),{Color="Accent"})
     local label=text(box,info.Text or "VISUAL PREVIEW",10,self.Colors.Text,true);label.AnchorPoint=Vector2.new(0.5,1);label.Position=UDim2.new(0.5,0,0,-7);label.Size=UDim2.fromOffset(160,18);label.TextXAlignment=Enum.TextXAlignment.Center
     local health=bind(new("Frame",{AnchorPoint=Vector2.new(1,0),Position=UDim2.fromOffset(-6,0),Size=UDim2.fromOffset(3,190),BackgroundColor3=self.Colors.Dark,ZIndex=282},box),{BackgroundColor3="Dark"});corner(health,2)
@@ -667,9 +697,11 @@ function L:CreateWindow(config)
     local dragSurface=new("TextButton",{AutoButtonColor=false,Text="",BackgroundTransparency=1,Size=UDim2.fromScale(1,1),ZIndex=1},header);drag(dragSurface,root)
     local subtabs=new("Frame",{Position=UDim2.fromOffset(0,4),Size=UDim2.new(0.42,0,0,42),BackgroundTransparency=1,ZIndex=2},header)
     local subLayout=new("UIListLayout",{FillDirection=Enum.FillDirection.Horizontal,Padding=UDim.new(0,8),SortOrder=Enum.SortOrder.LayoutOrder},subtabs)
-    local search=bind(new("TextBox",{AnchorPoint=Vector2.new(0.5,0),Position=UDim2.new(0.68,0,0,5),Size=UDim2.fromOffset(280,35),BackgroundColor3=self.Colors.Dark,BackgroundTransparency=0.34,
-        ClearTextOnFocus=false,Font=Enum.Font.Gotham,PlaceholderText="Search features",PlaceholderColor3=self.Colors.Muted,Text="",TextColor3=self.Colors.Text,TextSize=11,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=2},header),{BackgroundColor3="Dark",PlaceholderColor3="Muted",TextColor3="Text"});corner(search,5);stroke(search,0.88);pad(search,34,8)
-    local searchIcon=bind(new("ImageLabel",{Position=UDim2.fromOffset(12,10),Size=UDim2.fromOffset(15,15),BackgroundTransparency=1,Image=self.Icons.Search,ImageColor3=self.Colors.Muted,ZIndex=3},search),{ImageColor3="Muted"})
+    local searchHolder=bind(new("Frame",{AnchorPoint=Vector2.new(0.5,0),Position=UDim2.new(0.68,0,0,5),Size=UDim2.fromOffset(280,35),
+        BackgroundColor3=self.Colors.Dark,BackgroundTransparency=0.34,ZIndex=2},header),{BackgroundColor3="Dark"});corner(searchHolder,5);stroke(searchHolder,0.88)
+    local searchIcon=bind(new("ImageLabel",{Position=UDim2.fromOffset(12,10),Size=UDim2.fromOffset(15,15),BackgroundTransparency=1,Image=self.Icons.Search,ImageColor3=self.Colors.Muted,ZIndex=3},searchHolder),{ImageColor3="Muted"})
+    local search=bind(new("TextBox",{Position=UDim2.fromOffset(36,0),Size=UDim2.new(1,-44,1,0),BackgroundTransparency=1,
+        ClearTextOnFocus=false,Font=Enum.Font.Gotham,PlaceholderText="Search features",PlaceholderColor3=self.Colors.Muted,Text="",TextColor3=self.Colors.Text,TextSize=11,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=3},searchHolder),{PlaceholderColor3="Muted",TextColor3="Text"})
     local minimize=bind(new("TextButton",{AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,-39,0,6),Size=UDim2.fromOffset(34,32),AutoButtonColor=false,
         BackgroundColor3=self.Colors.Control,BackgroundTransparency=0.6,Font=Enum.Font.GothamMedium,Text="",TextColor3=self.Colors.Muted,TextSize=16,ZIndex=3},header),{BackgroundColor3="Control",TextColor3="Muted"});corner(minimize,4)
     local minimizeIcon=bind(new("ImageLabel",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.5),Size=UDim2.fromOffset(14,14),BackgroundTransparency=1,Image=self.Icons.Minimize,ImageColor3=self.Colors.Muted,ZIndex=4},minimize),{ImageColor3="Muted"})
@@ -712,7 +744,7 @@ function L:CreateWindow(config)
     end))
     settingsButton.Activated:Connect(function() if window.SettingsTab then window.SettingsTab:Show() end end)
     minimize.Activated:Connect(function() window:Minimize() end)
-    destroy.Activated:Connect(function() window:Destroy() end)
+    destroy.Activated:Connect(function() window:Minimize() end)
     for _,control in ipairs({settingsButton,minimize,destroy}) do
         control.MouseEnter:Connect(function() tween(control,{BackgroundTransparency=0.28},0.12) end)
         control.MouseLeave:Connect(function() tween(control,{BackgroundTransparency=control==settingsButton and (window.SettingsTab and window.SettingsTab.Active and 0.28 or 0.65) or 0.6},0.12) end)
@@ -822,12 +854,18 @@ function L:CreateWindow(config)
     end
     function window:SelectTab(which) local tab=type(which)=="number" and self.TabOrder[which] or self.Tabs[which];if tab then tab:Show() end end
     function window:SetVisible(value)
-        closePopups();self.Visible=not not value;self.VisibilityToken=(self.VisibilityToken or 0)+1;local token=self.VisibilityToken
+        value=not not value
+        if self.Visible==value then return end
+        closePopups();self.Visible=value;self.VisibilityToken=(self.VisibilityToken or 0)+1;local token=self.VisibilityToken
         if value then
             root.Visible=true;icon.Visible=false;resize();local targetScale=scale.Scale
+            for overlay,wasVisible in next,self.OverlayVisibility or {} do if overlay.Parent then overlay.Visible=wasVisible end end
+            self.OverlayVisibility=nil
             scale.Scale=targetScale*0.955;panel.BackgroundTransparency=0.62
             tween(scale,{Scale=targetScale},0.28);tween(panel,{BackgroundTransparency=0.17},0.24)
         else
+            self.OverlayVisibility={}
+            for overlay in next,L.Overlays do if overlay.Parent then self.OverlayVisibility[overlay]=overlay.Visible;overlay.Visible=false end end
             local targetScale=scale.Scale
             tween(scale,{Scale=targetScale*0.965},0.2);tween(panel,{BackgroundTransparency=0.72},0.18)
             task.delay(0.2,function()

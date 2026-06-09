@@ -23,6 +23,8 @@ Luminware is a reusable Roblox UI library with Fluent-style presentation, Linori
 - Visual-only FOV circle and ESP-style preview APIs for interface demonstrations
 - Angular Luminware branding, square control styling, darker feature cards, and built-in bottom-rail settings
 - Bundled Lucide tab icons and timed loading/open/close transitions
+- Live Home dashboard diagnostics for player, session, server, executor, subscription, FPS, and ping
+- Minimize and close controls collapse into the restore icon while preserving overlay visibility
 - `Library.Options`, `Library.Toggles`, `OnChanged`, `OnClick`, `SetValue`, `SetVisible`, and `SetDisabled`
 
 ## Load
