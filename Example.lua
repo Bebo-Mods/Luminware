@@ -1,5 +1,7 @@
 local base="https://raw.githubusercontent.com/Bebo-Mods/Luminware/main/"
 local Library=loadstring(game:HttpGet(base.."Library.lua"))()
+local Icons=loadstring(game:HttpGet(base.."Icons.lua"))()
+Library:SetIcons(Icons)
 local SaveManager=loadstring(game:HttpGet(base.."addons/SaveManager.lua"))()
 local ThemeManager=loadstring(game:HttpGet(base.."addons/ThemeManager.lua"))()
 local InterfaceManager=loadstring(game:HttpGet(base.."addons/InterfaceManager.lua"))()
@@ -8,7 +10,7 @@ local BootMobile=Global.LuminwareMobileMode
 if BootMobile==nil then BootMobile=game:GetService("UserInputService").TouchEnabled end
 local BootSmallIcon=Global.LuminwareSmallIcon~=false
 
-local Loader=Library:CreateLoader({Title="Luminware",Subtitle="Preparing concept interface"})
+local Loader=Library:CreateLoader({Title="Luminware",Subtitle="Preparing concept interface",MinimumDuration=3})
 Loader:SetProgress(0.12,"Creating responsive window")
 task.wait(0.1)
 
@@ -20,11 +22,11 @@ local Window=Library:CreateWindow({
 })
 
 local Tabs={
-    Home=Window:AddTab({Title="Home",IconText="S"}),
-    Controls=Window:AddTab({Title="Controls",IconText="C"}),
-    Layouts=Window:AddTab({Title="Layouts",IconText="L"}),
-    Visuals=Window:AddTab({Title="Visuals",IconText="V"}),
-    State=Window:AddTab({Title="State",IconText="D"}),
+    Home=Window:AddTab({Title="Home"}),
+    Controls=Window:AddTab({Title="Controls"}),
+    Layouts=Window:AddTab({Title="Layouts"}),
+    Visuals=Window:AddTab({Title="Visuals"}),
+    State=Window:AddTab({Title="State"}),
     Settings=Window:AddTab({Title="Settings",Settings=true}),
 }
 Loader:SetProgress(0.32,"Building controls")
