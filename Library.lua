@@ -25,12 +25,11 @@ local Workspace=service("Workspace")
 
 local Player=Players.LocalPlayer or Players.PlayerAdded:Wait()
 local Mouse=Player:GetMouse()
-local PlayerGui=Player:WaitForChild("PlayerGui")
 local Parent=CoreGui
 pcall(function() if typeof(gethui)=="function" then Parent=CloneRef(gethui()) end end)
 
 local checked={}
-for _,container in ipairs({Parent,CoreGui,PlayerGui}) do
+for _,container in ipairs({Parent,CoreGui}) do
     if container and not checked[container] then
         checked[container]=true
         local old=container:FindFirstChild("LuminwareConcept")
@@ -44,8 +43,7 @@ Screen.IgnoreGuiInset=true
 Screen.ResetOnSpawn=false
 Screen.ZIndexBehavior=Enum.ZIndexBehavior.Sibling
 pcall(ProtectGui,Screen)
-local parented=pcall(function() Screen.Parent=Parent end)
-if not parented or not Screen.Parent then Screen.Parent=PlayerGui end
+Screen.Parent=Parent
 
 local L={
     Version="3.0.0",
