@@ -16,7 +16,6 @@ local TS=service("TweenService")
 local UIS=service("UserInputService")
 local RS=service("RunService")
 local Players=service("Players")
-local Lighting=service("Lighting")
 local Stats=service("Stats")
 local MarketplaceService=service("MarketplaceService")
 local LocalizationService=service("LocalizationService")
@@ -289,8 +288,6 @@ function L:CreateLoader(info)
     local startedAt=os.clock()
     local minimumDuration=info.MinimumDuration or 2.4
     self.LoaderActive=true
-    local blur=Lighting:FindFirstChild("LuminwareBlur")
-    if blur then blur.Size=0 end
     local overlay=new("Frame",{Active=true,Size=UDim2.fromScale(1,1),BackgroundColor3=self.Colors.Dark,BackgroundTransparency=1,ZIndex=400},Screen)
     local card=bind(new("Frame",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.new(0.5,0,0.5,10),Size=UDim2.fromOffset(390,164),
         BackgroundColor3=self.Colors.Panel,BackgroundTransparency=1,ZIndex=401},overlay),{BackgroundColor3="Panel"})
@@ -1030,8 +1027,6 @@ function L:UpdateColorsUsingRegistry()
 end
 function L:ToggleAcrylic(value)
     self.AcrylicRequested=value~=false
-    local blur=Lighting:FindFirstChild("LuminwareBlur") or new("BlurEffect",{Name="LuminwareBlur",Size=0},Lighting)
-    tween(blur,{Size=(value==false or self.LoaderActive) and 0 or 4},0.2)
 end
 function L:ToggleTransparency(value) for _,w in ipairs(self.Windows) do tween(w.Panel,{BackgroundTransparency=value and 0.35 or 0.17}) end end
 function L:SetMobileMode(value) if self.Window then self.Window:SetMobileMode(value) end end
@@ -1042,7 +1037,6 @@ function L:Unload()
     self.Unloaded=true
     for _,fn in ipairs(self.OnUnloadCallbacks) do pcall(fn) end
     for _,s in ipairs(self.Signals) do pcall(function()s:Disconnect()end) end
-    local blur=Lighting:FindFirstChild("LuminwareBlur");if blur then blur:Destroy() end
     Screen:Destroy()
     pcall(function() if typeof(getgenv)=="function" then getgenv().Options=nil;getgenv().Toggles=nil end end)
 end

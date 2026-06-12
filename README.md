@@ -8,7 +8,7 @@ Luminware is a reusable Roblox UI library with Fluent-style presentation, Linori
 - Options own their values, setters, callbacks, visibility, disabled state, and serialization.
 - Popups are bounded, window-owned, correctly layered, and closed during navigation/lifecycle changes.
 - Cards and columns use measured automatic layouts with bounded scrolling.
-- Every connection, popup, window, blur effect, and callback has explicit cleanup ownership.
+- Every connection, popup, window, and callback has explicit cleanup ownership.
 - Windows follow mouse or touch directly from empty header space and remain bounded to the viewport.
 
 ## Features

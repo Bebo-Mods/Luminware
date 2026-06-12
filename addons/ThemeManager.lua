@@ -64,7 +64,7 @@ function ThemeManager:BuildSection(target)
             L.Colors[field]=color;L:UpdateColorsUsingRegistry()
         end})
     end
-    section:AddToggle("LW_Acrylic",{Text="Acrylic blur",Default=true,Callback=function(value)L:ToggleAcrylic(value)end})
+    section:AddToggle("LW_Acrylic",{Text="Acrylic styling",Default=true,Callback=function(value)L:ToggleAcrylic(value)end})
     section:AddToggle("LW_Transparent",{Text="More transparent",Default=false,Callback=function(value)L:ToggleTransparency(value)end})
     self:LoadDefault()
     return section
