@@ -22,7 +22,7 @@ Luminware is a reusable Roblox UI library with Fluent-style presentation, Linori
 - Responsive resizing, mobile mode, draggable restore icon, and live performance watermark
 - Visual-only FOV circle and ESP-style preview APIs for interface demonstrations
 - Angular Luminware branding, square control styling, darker feature cards, and built-in bottom-rail settings
-- Bundled Lucide tab icons and timed loading/open/close transitions
+- Asset-free text icons and timed loading/open/close transitions
 - Live Home dashboard diagnostics for player, session, server, executor, subscription, FPS, and ping
 - Responsive mobile mode with a compact rail, single-column cards, and scrollable tab/subtab navigation
 - Minimize and close controls collapse into the restore icon while preserving overlay visibility
@@ -34,10 +34,6 @@ Luminware is a reusable Roblox UI library with Fluent-style presentation, Linori
 local Library=loadstring(game:HttpGet(
     "https://raw.githubusercontent.com/Bebo-Mods/Luminware/main/Library.lua"
 ))()
-local Icons=loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/Bebo-Mods/Luminware/main/Icons.lua"
-))()
-Library:SetIcons(Icons)
 
 local Window=Library:CreateWindow({
     Size=UDim2.fromOffset(900,600),

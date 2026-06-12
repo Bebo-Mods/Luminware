@@ -58,12 +58,6 @@ local L={
     OnUnloadCallbacks={},
     Unloaded=false,
     Theme="Concept",
-    Icons={
-        Home="rbxassetid://10723407389",Aim="rbxassetid://10709818534",Movement="rbxassetid://10734900011",
-        Misc="rbxassetid://10747383470",Farms="rbxassetid://10734965572",Controls="rbxassetid://10734963191",Layouts="rbxassetid://10723424646",
-        Visuals="rbxassetid://10723346959",State="rbxassetid://10709818996",Settings="rbxassetid://10734950309",
-        Search="rbxassetid://10734943674",Minimize="rbxassetid://10734896206",Close="rbxassetid://10747384394",
-    },
     Colors={
         Accent=Color3.fromRGB(46,156,214),
         Panel=Color3.fromRGB(22,24,27),
@@ -146,7 +140,6 @@ function L:SafeCallback(fn,...)
         if not ok then L:Notify({Title="Callback error",Content=tostring(err),Duration=6}) end
     end)
 end
-function L:SetIcons(icons) for name,asset in next,icons or {} do self.Icons[name]=asset end end
 local function text(parent,value,size,color,bold)
     local label=new("TextLabel",{BackgroundTransparency=1,Font=bold and Enum.Font.GothamMedium or Enum.Font.Gotham,
         Text=value or "",TextColor3=color or L.Colors.Text,TextSize=size or 12,
@@ -641,7 +634,11 @@ local function createCard(column,title,window)
         local hue,sat,val=Color3.toHSV(option.Value)
         local pop=ownPopup(bind(new("Frame",{Visible=false,BackgroundColor3=L.Colors.Card,BackgroundTransparency=0.04,Size=UDim2.fromOffset(240,250),ZIndex=200},Screen),{BackgroundColor3="Card"}),window);corner(pop,5);stroke(pop,0.6);pad(pop,12,12,12,12)
         local title=text(pop,info.Title or info.Text or "Color picker",12,L.Colors.Text,true);title.Size=UDim2.new(1,0,0,22)
-        local sv=new("ImageLabel",{Position=UDim2.fromOffset(0,30),Size=UDim2.new(1,-25,0,150),Image="rbxassetid://4155801252",BackgroundColor3=Color3.fromHSV(hue,1,1),ZIndex=201},pop);corner(sv,2)
+        local sv=new("Frame",{Position=UDim2.fromOffset(0,30),Size=UDim2.new(1,-25,0,150),BackgroundColor3=Color3.fromHSV(hue,1,1),ClipsDescendants=true,ZIndex=201},pop);corner(sv,2)
+        local saturation=new("Frame",{Size=UDim2.fromScale(1,1),BackgroundColor3=Color3.new(1,1,1),BorderSizePixel=0,ZIndex=201},sv)
+        new("UIGradient",{Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0),NumberSequenceKeypoint.new(1,1)})},saturation)
+        local valueShade=new("Frame",{Size=UDim2.fromScale(1,1),BackgroundColor3=Color3.new(0,0,0),BorderSizePixel=0,ZIndex=201},sv)
+        new("UIGradient",{Rotation=90,Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,1),NumberSequenceKeypoint.new(1,0)})},valueShade)
         local svCursor=new("Frame",{AnchorPoint=Vector2.new(0.5,0.5),Size=UDim2.fromOffset(12,12),BackgroundColor3=L.Colors.White,ZIndex=202},sv);corner(svCursor,6);stroke(svCursor,0.1)
         local hueBar=new("Frame",{Position=UDim2.new(1,-17,0,30),Size=UDim2.fromOffset(17,150),ZIndex=201},pop);corner(hueBar,2)
         local hueKeys={} for i=0,10 do table.insert(hueKeys,ColorSequenceKeypoint.new(i/10,Color3.fromHSV(i/10,1,1))) end
@@ -730,8 +727,8 @@ function L:CreateWindow(config)
     new("UIListLayout",{Padding=UDim.new(0,8),HorizontalAlignment=Enum.HorizontalAlignment.Center,SortOrder=Enum.SortOrder.LayoutOrder},nav)
     local settingsButton=bind(new("TextButton",{AnchorPoint=Vector2.new(0.5,1),Position=UDim2.new(0.5,0,1,-12),Size=UDim2.fromOffset(44,38),BackgroundColor3=self.Colors.Dark,BackgroundTransparency=0.65,
         Font=Enum.Font.GothamMedium,Text="",TextColor3=self.Colors.Muted,TextSize=9},rail),{BackgroundColor3="Dark",TextColor3="Muted"});corner(settingsButton,5);stroke(settingsButton,0.86)
-    local settingsGlyph=bind(new("ImageLabel",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.5),Size=UDim2.fromOffset(18,18),
-        BackgroundTransparency=1,Image=self.Icons.Settings,ImageColor3=self.Colors.Muted,ZIndex=4},settingsButton),{ImageColor3="Muted"})
+    local settingsGlyph=bind(new("TextLabel",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.5),Size=UDim2.fromOffset(18,18),
+        BackgroundTransparency=1,Font=Enum.Font.GothamMedium,Text="S",TextColor3=self.Colors.Muted,TextSize=12,ZIndex=4},settingsButton),{TextColor3="Muted"})
     local content=new("Frame",{Position=UDim2.fromOffset(104,14),Size=UDim2.new(1,-118,1,-28),BackgroundTransparency=1},panel)
     local header=new("Frame",{Size=UDim2.new(1,0,0,54),BackgroundTransparency=1},content)
     local dragSurface=new("TextButton",{AutoButtonColor=false,Text="",BackgroundTransparency=1,Size=UDim2.fromScale(1,1),ZIndex=1},header);drag(dragSurface,root)
@@ -740,15 +737,18 @@ function L:CreateWindow(config)
     local subLayout=new("UIListLayout",{FillDirection=Enum.FillDirection.Horizontal,Padding=UDim.new(0,8),SortOrder=Enum.SortOrder.LayoutOrder},subtabs)
     local searchHolder=bind(new("Frame",{AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,-84,0,5),Size=UDim2.fromOffset(280,35),
         BackgroundColor3=self.Colors.Dark,BackgroundTransparency=0.34,ZIndex=2},header),{BackgroundColor3="Dark"});corner(searchHolder,5);stroke(searchHolder,0.88)
-    local searchIcon=bind(new("ImageLabel",{Position=UDim2.fromOffset(12,10),Size=UDim2.fromOffset(15,15),BackgroundTransparency=1,Image=self.Icons.Search,ImageColor3=self.Colors.Muted,ZIndex=3},searchHolder),{ImageColor3="Muted"})
+    local searchIcon=bind(new("TextLabel",{Position=UDim2.fromOffset(12,8),Size=UDim2.fromOffset(15,18),BackgroundTransparency=1,
+        Font=Enum.Font.GothamMedium,Text="?",TextColor3=self.Colors.Muted,TextSize=12,ZIndex=3},searchHolder),{TextColor3="Muted"})
     local search=bind(new("TextBox",{Position=UDim2.fromOffset(36,0),Size=UDim2.new(1,-44,1,0),BackgroundTransparency=1,
         ClearTextOnFocus=false,Font=Enum.Font.Gotham,PlaceholderText="Search features",PlaceholderColor3=self.Colors.Muted,Text="",TextColor3=self.Colors.Text,TextSize=11,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=3},searchHolder),{PlaceholderColor3="Muted",TextColor3="Text"})
     local minimize=bind(new("TextButton",{AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,-39,0,6),Size=UDim2.fromOffset(34,32),AutoButtonColor=false,
         BackgroundColor3=self.Colors.Control,BackgroundTransparency=0.6,Font=Enum.Font.GothamMedium,Text="",TextColor3=self.Colors.Muted,TextSize=16,ZIndex=3},header),{BackgroundColor3="Control",TextColor3="Muted"});corner(minimize,4)
-    local minimizeIcon=bind(new("ImageLabel",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.5),Size=UDim2.fromOffset(14,14),BackgroundTransparency=1,Image=self.Icons.Minimize,ImageColor3=self.Colors.Muted,ZIndex=4},minimize),{ImageColor3="Muted"})
+    local minimizeIcon=bind(new("TextLabel",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.5),Size=UDim2.fromOffset(14,14),
+        BackgroundTransparency=1,Font=Enum.Font.GothamMedium,Text="-",TextColor3=self.Colors.Muted,TextSize=14,ZIndex=4},minimize),{TextColor3="Muted"})
     local destroy=bind(new("TextButton",{AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,0,0,6),Size=UDim2.fromOffset(34,32),AutoButtonColor=false,
         BackgroundColor3=self.Colors.Control,BackgroundTransparency=0.6,Font=Enum.Font.GothamMedium,Text="",TextColor3=self.Colors.Muted,TextSize=10,ZIndex=3},header),{BackgroundColor3="Control",TextColor3="Muted"});corner(destroy,4)
-    local destroyIcon=bind(new("ImageLabel",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.5),Size=UDim2.fromOffset(14,14),BackgroundTransparency=1,Image=self.Icons.Close,ImageColor3=self.Colors.Muted,ZIndex=4},destroy),{ImageColor3="Muted"})
+    local destroyIcon=bind(new("TextLabel",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.5),Size=UDim2.fromOffset(14,14),
+        BackgroundTransparency=1,Font=Enum.Font.GothamMedium,Text="X",TextColor3=self.Colors.Muted,TextSize=11,ZIndex=4},destroy),{TextColor3="Muted"})
     local pages=new("Frame",{Position=UDim2.fromOffset(0,56),Size=UDim2.new(1,0,1,-56),BackgroundTransparency=1,ClipsDescendants=true},content)
     local resizeGrip=bind(new("TextButton",{AutoButtonColor=false,Text="",AnchorPoint=Vector2.new(1,1),Position=UDim2.new(1,-7,1,-7),
         Size=UDim2.fromOffset(22,22),BackgroundColor3=self.Colors.Control,BackgroundTransparency=0.72,ZIndex=20},panel),{BackgroundColor3="Control"});corner(resizeGrip,8)
@@ -844,12 +844,10 @@ function L:CreateWindow(config)
         local button=bind(new("TextButton",{AutoButtonColor=false,Size=UDim2.fromOffset(46,40),BackgroundColor3=L.Colors.Dark,BackgroundTransparency=1,
             Font=Enum.Font.GothamMedium,Text="",TextColor3=L.Colors.Text,TextSize=13,Visible=not info.Settings},nav),{BackgroundColor3="Dark",TextColor3="Text"});corner(button,5)
         table.insert(window.NavButtons,button);applyResponsive()
-        local asset=info.Icon or L.Icons[title]
-        local tabIcon=asset and bind(new("ImageLabel",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.5),Size=UDim2.fromOffset(18,18),
-            BackgroundTransparency=1,Image=asset,ImageColor3=L.Colors.Muted},button),{ImageColor3="Muted"}) or text(button,info.IconText or title:sub(1,1):upper(),12,L.Colors.Muted,true)
+        local tabIcon=text(button,info.IconText or title:sub(1,1):upper(),12,L.Colors.Muted,true)
         tabIcon.AnchorPoint=Vector2.new(0.5,0.5);tabIcon.Position=UDim2.fromScale(0.5,0.5);tabIcon.Size=UDim2.fromOffset(20,20)
-        if not asset then tabIcon.TextXAlignment=Enum.TextXAlignment.Center end
-        local function iconColor(color) tween(tabIcon,asset and {ImageColor3=color} or {TextColor3=color}) end
+        tabIcon.TextXAlignment=Enum.TextXAlignment.Center
+        local function iconColor(color) tween(tabIcon,{TextColor3=color}) end
         button.MouseEnter:Connect(function() if not tab.Active then tween(button,{BackgroundTransparency=0.68},0.14);iconColor(L.Colors.Text) end end)
         button.MouseLeave:Connect(function() if not tab.Active then tween(button,{BackgroundTransparency=1},0.14);iconColor(L.Colors.Muted) end end)
         function tab:Show()
@@ -858,7 +856,7 @@ function L:CreateWindow(config)
             self.Active=true;tween(button,{BackgroundTransparency=0.38})
             iconColor(L.Colors.Text)
             tween(settingsButton,{BackgroundTransparency=self.IsSettings and 0.28 or 0.65,TextColor3=self.IsSettings and L.Colors.Text or L.Colors.Muted})
-            tween(settingsGlyph,{ImageColor3=self.IsSettings and L.Colors.Text or L.Colors.Muted})
+            tween(settingsGlyph,{TextColor3=self.IsSettings and L.Colors.Text or L.Colors.Muted})
             for _,sub in ipairs(self.SubtabOrder) do sub.Button.Visible=true end
             if self.SubtabOrder[1] then self.SubtabOrder[1]:Show() end
         end

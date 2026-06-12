@@ -15,12 +15,9 @@
 local baseUrl = "https://raw.githubusercontent.com/Bebo-Mods/Luminware/main/"
 
 local Library = loadstring(game:HttpGet(baseUrl .. "Library.lua"))()
-local Icons = loadstring(game:HttpGet(baseUrl .. "Icons.lua"))()
 local SaveManager = loadstring(game:HttpGet(baseUrl .. "addons/SaveManager.lua"))()
 local ThemeManager = loadstring(game:HttpGet(baseUrl .. "addons/ThemeManager.lua"))()
 local InterfaceManager = loadstring(game:HttpGet(baseUrl .. "addons/InterfaceManager.lua"))()
-
-Library:SetIcons(Icons)
 
 -- Boot Configuration -----------------------------------------------------------
 
